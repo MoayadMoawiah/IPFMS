@@ -1,0 +1,331 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { PageHeader } from "@/components/layout/page-header";
+import {
+  FormActions,
+  FormErrorBanner,
+  FormField,
+  FormSection,
+} from "@/components/forms/form-layout";
+import { useGrants } from "@/hooks/use-grants";
+import { getPaginatedItems } from "@/lib/api/pagination";
+import { useCreatePurchaseOrder, useVendors } from "@/hooks/use-procurement";
+import { extractApiError } from "@/lib/api-errors";
+import type { Grant } from "@/lib/api/grants";
+
+const CURRENCIES = ["USD", "EUR", "GBP", "SDG"];
+
+const itemSchema = z.object({
+  description: z.string().min(1, "Description is required"),
+  unit: z.string().min(1, "Unit is required"),
+  orderedQuantity: z
+    .string()
+    .min(1, "Quantity is required")
+    .refine((v) => !isNaN(Number(v)) && Number(v) > 0, "Must be a positive number"),
+  unitPrice: z
+    .string()
+    .min(1, "Price is required")
+    .refine((v) => !isNaN(Number(v)) && Number(v) >= 0, "Must be a non-negative number"),
+});
+
+const schema = z.object({
+  title: z.string().min(3, "Title is required"),
+  grantId: z.string().min(1, "Grant is required"),
+  vendorId: z.string().min(1, "Vendor is required"),
+  currency: z.string().min(1, "Currency is required"),
+  deliveryAddress: z.string().optional(),
+  deliveryDate: z.string().optional(),
+  terms: z.string().optional(),
+  notes: z.string().optional(),
+  items: z.array(itemSchema).min(1, "At least one item is required"),
+});
+
+type FormValues = z.infer<typeof schema>;
+
+const defaultItem = { description: "", unit: "Unit", orderedQuantity: "", unitPrice: "" };
+
+export default function NewPurchaseOrderPage() {
+  const router = useRouter();
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const { data: grantsData, isLoading: loadingGrants } = useGrants({ limit: 100 });
+  const grants: Grant[] = getPaginatedItems(grantsData);
+
+  const { data: vendorsData, isLoading: loadingVendors } = useVendors({ limit: 100 });
+  const vendors: { id: string; name: string; registrationNumber?: string }[] =
+    getPaginatedItems(vendorsData);
+
+  const createPO = useCreatePurchaseOrder();
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    control,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      title: "",
+      grantId: "",
+      vendorId: "",
+      currency: "USD",
+      deliveryAddress: "",
+      deliveryDate: "",
+      terms: "",
+      notes: "",
+      items: [{ ...defaultItem }],
+    },
+  });
+
+  const { fields, append, remove } = useFieldArray({ control, name: "items" });
+  const items = watch("items");
+  const selectedGrant = grants.find((g) => g.id === watch("grantId"));
+
+  const subtotal = items.reduce((sum, item) => {
+    const qty = Number(item.orderedQuantity) || 0;
+    const price = Number(item.unitPrice) || 0;
+    return sum + qty * price;
+  }, 0);
+
+  const onSubmit = (values: FormValues) => {
+    setSubmitError(null);
+    createPO.mutate(
+      {
+        title: values.title,
+        grantId: values.grantId,
+        vendorId: values.vendorId,
+        currency: values.currency,
+        subtotal,
+        totalAmount: subtotal,
+        deliveryAddress: values.deliveryAddress || undefined,
+        deliveryDate: values.deliveryDate || undefined,
+        terms: values.terms || undefined,
+        notes: values.notes || undefined,
+        items: values.items.map((item) => ({
+          description: item.description,
+          unit: item.unit,
+          orderedQuantity: Number(item.orderedQuantity),
+          unitPrice: Number(item.unitPrice),
+        })),
+      },
+      {
+        onSuccess: (po) => router.push(`/procurement/purchase-orders/${po.id}`),
+        onError: (err) => setSubmitError(extractApiError(err, "Failed to create purchase order")),
+      }
+    );
+  };
+
+  return (
+    <div>
+      <PageHeader
+        title="New Purchase Order"
+        description="Create a purchase order for a vendor"
+        breadcrumbs={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Purchase Orders", href: "/procurement/purchase-orders" },
+          { label: "New PO" },
+        ]}
+        actions={
+          <Button variant="outline" asChild>
+            <Link href="/procurement/purchase-orders">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Purchase Orders
+            </Link>
+          </Button>
+        }
+      />
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-4xl">
+        {submitError && <FormErrorBanner message={submitError} />}
+
+        <FormSection title="Order Information">
+          <FormField
+            label="Title"
+            htmlFor="title"
+            required
+            error={errors.title?.message}
+            className="sm:col-span-2"
+          >
+            <Input id="title" placeholder="PO title" {...register("title")} />
+          </FormField>
+
+          <FormField label="Grant" htmlFor="grantId" required error={errors.grantId?.message}>
+            <Select
+              value={watch("grantId")}
+              onValueChange={(v) => setValue("grantId", v, { shouldValidate: true })}
+            >
+              <SelectTrigger id="grantId" disabled={loadingGrants}>
+                <SelectValue placeholder={loadingGrants ? "Loading grants…" : "Select grant"} />
+              </SelectTrigger>
+              <SelectContent>
+                {grants.map((g) => (
+                  <SelectItem key={g.id} value={g.id}>
+                    {g.code} — {g.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+
+          <FormField label="Vendor" htmlFor="vendorId" required error={errors.vendorId?.message}>
+            <Select
+              value={watch("vendorId")}
+              onValueChange={(v) => setValue("vendorId", v, { shouldValidate: true })}
+            >
+              <SelectTrigger id="vendorId" disabled={loadingVendors}>
+                <SelectValue placeholder={loadingVendors ? "Loading vendors…" : "Select vendor"} />
+              </SelectTrigger>
+              <SelectContent>
+                {vendors.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+
+          <FormField label="Currency" htmlFor="currency" required error={errors.currency?.message}>
+            <Select
+              value={watch("currency")}
+              onValueChange={(v) => setValue("currency", v, { shouldValidate: true })}
+            >
+              <SelectTrigger id="currency">
+                <SelectValue placeholder="Select currency" />
+              </SelectTrigger>
+              <SelectContent>
+                {CURRENCIES.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+
+          <FormField label="Delivery Date" htmlFor="deliveryDate">
+            <Input id="deliveryDate" type="date" {...register("deliveryDate")} />
+          </FormField>
+
+          <FormField label="Delivery Address" htmlFor="deliveryAddress" className="sm:col-span-2">
+            <Input id="deliveryAddress" placeholder="Delivery location" {...register("deliveryAddress")} />
+          </FormField>
+        </FormSection>
+
+        <FormSection title="Line Items" contentClassName="grid-cols-1">
+          {errors.items?.message && (
+            <p className="text-xs text-destructive">{errors.items.message}</p>
+          )}
+          <div className="space-y-4 sm:col-span-2">
+            {fields.map((field, index) => (
+              <div key={field.id} className="grid gap-4 rounded-lg border p-4 sm:grid-cols-4">
+                <FormField
+                  label="Description"
+                  required
+                  error={errors.items?.[index]?.description?.message}
+                  className="sm:col-span-2"
+                >
+                  <Input
+                    placeholder="Item description"
+                    {...register(`items.${index}.description`)}
+                  />
+                </FormField>
+                <FormField
+                  label="Quantity"
+                  required
+                  error={errors.items?.[index]?.orderedQuantity?.message}
+                >
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="Qty"
+                    {...register(`items.${index}.orderedQuantity`)}
+                  />
+                </FormField>
+                <FormField label="Unit" required error={errors.items?.[index]?.unit?.message}>
+                  <Input placeholder="Unit" {...register(`items.${index}.unit`)} />
+                </FormField>
+                <FormField
+                  label="Unit Price"
+                  required
+                  error={errors.items?.[index]?.unitPrice?.message}
+                >
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    {...register(`items.${index}.unitPrice`)}
+                  />
+                </FormField>
+                {fields.length > 1 && (
+                  <div className="flex items-end sm:col-span-4">
+                    <Button type="button" variant="outline" size="sm" onClick={() => remove(index)}>
+                      <Trash2 className="h-4 w-4" />
+                      Remove
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => append({ ...defaultItem })}
+            >
+              <Plus className="h-4 w-4" />
+              Add Item
+            </Button>
+          </div>
+        </FormSection>
+
+        <FormSection title="Totals & Terms">
+          <div className="rounded-lg border p-4">
+            <p className="text-sm text-muted-foreground">Subtotal</p>
+            <p className="text-2xl font-bold">
+              {new Intl.NumberFormat("en-US", {
+                style: "currency",
+                currency: watch("currency") || selectedGrant?.currency || "USD",
+              }).format(subtotal)}
+            </p>
+          </div>
+
+          <FormField label="Terms" htmlFor="terms">
+            <Input id="terms" placeholder="Payment and delivery terms" {...register("terms")} />
+          </FormField>
+
+          <FormField label="Notes" htmlFor="notes" className="sm:col-span-2">
+            <Textarea id="notes" placeholder="Additional notes…" rows={3} {...register("notes")} />
+          </FormField>
+        </FormSection>
+
+        <FormActions
+          submitLabel="Create Purchase Order"
+          submittingLabel="Creating…"
+          cancelHref="/procurement/purchase-orders"
+          isSubmitting={createPO.isPending}
+        />
+      </form>
+    </div>
+  );
+}

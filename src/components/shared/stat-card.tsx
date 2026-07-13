@@ -48,13 +48,10 @@ export function StatCard({
           </div>
         </div>
         {href && (
-          <Link
-            href={href}
-            className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-          >
+          <span className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-primary">
             View details
             <ArrowRight className="h-3 w-3" />
-          </Link>
+          </span>
         )}
       </CardContent>
     </Card>

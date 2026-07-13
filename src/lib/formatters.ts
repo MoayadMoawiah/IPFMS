@@ -40,3 +40,9 @@ export function formatRelativeTime(date: string | Date): string {
   if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
   return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
 }
+
+/** Format ISO date for HTML `<input type="date">` value. */
+export function toDateInputValue(date: string | Date): string {
+  const iso = typeof date === "string" ? date : date.toISOString();
+  return iso.slice(0, 10);
+}

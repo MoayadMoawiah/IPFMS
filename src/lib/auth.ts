@@ -1,24 +1,17 @@
-export const AUTH_TOKEN_KEY = "ipfms_auth_token";
+/**
+ * Backward-compatibility shim.
+ * New code should use:
+ *   - useAuthStore from @/store/auth.store
+ *   - useAuth from @/hooks/use-auth
+ *   - getAccessToken / setAccessToken from @/lib/api/client
+ */
 
-export function setAuthToken(token: string) {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(AUTH_TOKEN_KEY, token);
-  }
-}
-
-export function getAuthToken(): string | null {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem(AUTH_TOKEN_KEY);
-  }
-  return null;
-}
-
-export function clearAuthToken() {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-  }
-}
+export { getAccessToken as getAuthToken, setAccessToken as setAuthToken, clearTokens as clearAuthToken } from './api/client';
 
 export function isAuthenticated(): boolean {
-  return !!getAuthToken();
+  if (typeof window === 'undefined') return false;
+  const token = sessionStorage.getItem('gpfms_at') || localStorage.getItem('gpfms_at');
+  return !!token;
 }
+
+export const AUTH_TOKEN_KEY = 'gpfms_at';

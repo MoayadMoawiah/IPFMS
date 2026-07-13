@@ -1,24 +1,80 @@
 "use client";
 
-import { notFound, useParams } from "next/navigation";
+import { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building2, Calendar, FileText } from "lucide-react";
+import { ArrowLeft, Building2, Calendar, FileText, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { getGrantById } from "@/lib/mock-data/grants";
-import { projectActivities } from "@/lib/mock-data/projects";
+import { LoadingSkeleton } from "@/components/shared/loading-skeleton";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { PermissionGate } from "@/components/auth/permission-gate";
+import { ActivityEditDialog } from "@/components/grants/activity-edit-dialog";
+import { useGrant, useGrantBudgetSummary, useDeleteGrant } from "@/hooks/use-grants";
+import { useDeleteActivity } from "@/hooks/use-projects";
 import { formatCurrency, formatDate, formatPercent } from "@/lib/formatters";
+import type { GrantActivity } from "@/lib/api/grants";
 
 export default function GrantDetailPage() {
   const params = useParams();
-  const grant = getGrantById(params.id as string);
-  if (!grant) notFound();
+  const router = useRouter();
+  const grantId = params.id as string;
 
-  const activities = projectActivities.filter((a) => a.grantId === grant.id);
+  const { data: grant, isLoading, isError } = useGrant(grantId);
+  const { data: budgetSummary } = useGrantBudgetSummary(grantId);
+  const deleteGrant = useDeleteGrant();
+  const deleteActivity = useDeleteActivity();
+
+  const [deleteGrantOpen, setDeleteGrantOpen] = useState(false);
+  const [deleteActivityTarget, setDeleteActivityTarget] = useState<GrantActivity | null>(null);
+  const [editActivity, setEditActivity] = useState<GrantActivity | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  if (isLoading) return <LoadingSkeleton variant="cards" />;
+  if (isError || !grant) {
+    return (
+      <div className="py-12 text-center text-muted-foreground">
+        Grant not found or failed to load.
+      </div>
+    );
+  }
+
+  const project = grant.projects?.[0];
+  const activities: GrantActivity[] = project?.activities ?? [];
+  const activityAllocated = budgetSummary?.summary.activityAllocated ?? 0;
+  const activityUnallocated =
+    budgetSummary?.summary.activityUnallocated ?? Number(grant.totalBudget) - activityAllocated;
+  const canEditGrant = grant.status !== "CLOSED" && grant.status !== "CANCELLED";
+
+  const handleDeleteGrant = () => {
+    setActionError(null);
+    deleteGrant.mutate(grantId, {
+      onSuccess: () => router.push("/grants"),
+      onError: (err: unknown) => {
+        const e = err as { response?: { data?: { message?: string } }; message?: string };
+        setActionError(e?.response?.data?.message ?? e?.message ?? "Failed to delete grant");
+      },
+    });
+  };
+
+  const handleDeleteActivity = () => {
+    if (!deleteActivityTarget) return;
+    setActionError(null);
+    deleteActivity.mutate(
+      { id: deleteActivityTarget.id, grantId },
+      {
+        onSuccess: () => setDeleteActivityTarget(null),
+        onError: (err: unknown) => {
+          const e = err as { response?: { data?: { message?: string } }; message?: string };
+          setActionError(e?.response?.data?.message ?? e?.message ?? "Failed to delete activity");
+        },
+      }
+    );
+  };
 
   return (
     <div>
@@ -31,20 +87,46 @@ export default function GrantDetailPage() {
           { label: grant.code },
         ]}
         actions={
-          <Button variant="outline" asChild>
-            <Link href="/grants">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Grants
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <PermissionGate permission="GRANTS:UPDATE">
+              {canEditGrant && (
+                <Button variant="outline" asChild>
+                  <Link href={`/grants/${grantId}/edit`}>
+                    <Pencil className="h-4 w-4" />
+                    Edit Grant
+                  </Link>
+                </Button>
+              )}
+            </PermissionGate>
+            <PermissionGate permission="GRANTS:DELETE">
+              <Button
+                variant="outline"
+                className="text-destructive hover:text-destructive"
+                onClick={() => setDeleteGrantOpen(true)}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Grant
+              </Button>
+            </PermissionGate>
+            <Button variant="outline" asChild>
+              <Link href="/grants">
+                <ArrowLeft className="h-4 w-4" />
+                Back to Grants
+              </Link>
+            </Button>
+          </div>
         }
       />
 
+      {actionError && (
+        <div className="mb-4 rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {actionError}
+        </div>
+      )}
+
       <div className="mb-6 flex items-center gap-3">
         <StatusBadge status={grant.status} />
-        <span className="text-sm text-muted-foreground">
-          {grant.activitiesCount} activities
-        </span>
+        <span className="text-sm text-muted-foreground">{activities.length} activities</span>
       </div>
 
       <Tabs defaultValue="overview">
@@ -61,7 +143,7 @@ export default function GrantDetailPage() {
               <CardContent className="p-6">
                 <p className="text-sm text-muted-foreground">Total Budget</p>
                 <p className="text-2xl font-bold">
-                  {formatCurrency(grant.totalBudget, grant.currency)}
+                  {formatCurrency(Number(grant.totalBudget), grant.currency)}
                 </p>
               </CardContent>
             </Card>
@@ -69,7 +151,7 @@ export default function GrantDetailPage() {
               <CardContent className="p-6">
                 <p className="text-sm text-muted-foreground">Committed</p>
                 <p className="text-2xl font-bold">
-                  {formatCurrency(grant.committed, grant.currency)}
+                  {formatCurrency(Number(grant.committedAmount), grant.currency)}
                 </p>
               </CardContent>
             </Card>
@@ -77,7 +159,7 @@ export default function GrantDetailPage() {
               <CardContent className="p-6">
                 <p className="text-sm text-muted-foreground">Spent</p>
                 <p className="text-2xl font-bold">
-                  {formatCurrency(grant.spent, grant.currency)}
+                  {formatCurrency(Number(grant.spentAmount), grant.currency)}
                 </p>
               </CardContent>
             </Card>
@@ -85,7 +167,7 @@ export default function GrantDetailPage() {
               <CardContent className="p-6">
                 <p className="text-sm text-muted-foreground">Available</p>
                 <p className="text-2xl font-bold text-success">
-                  {formatCurrency(grant.available, grant.currency)}
+                  {formatCurrency(Number(grant.availableAmount), grant.currency)}
                 </p>
               </CardContent>
             </Card>
@@ -100,7 +182,7 @@ export default function GrantDetailPage() {
                 <div className="flex items-center gap-3">
                   <Building2 className="h-5 w-5 text-primary" />
                   <div>
-                    <p className="font-medium">{grant.donor}</p>
+                    <p className="font-medium">{grant.donor?.name ?? "—"}</p>
                     <p className="text-sm text-muted-foreground">Primary Donor</p>
                   </div>
                 </div>
@@ -116,6 +198,12 @@ export default function GrantDetailPage() {
                 {grant.description && (
                   <p className="text-sm text-muted-foreground">{grant.description}</p>
                 )}
+                {grant.objectives && (
+                  <div>
+                    <p className="text-sm font-medium">Objectives</p>
+                    <p className="text-sm text-muted-foreground">{grant.objectives}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -127,26 +215,38 @@ export default function GrantDetailPage() {
                 <div className="mb-2 flex justify-between">
                   <span className="text-sm text-muted-foreground">Overall Progress</span>
                   <span className="font-semibold">
-                    {formatPercent(grant.utilizationPercent)}
+                    {formatPercent(grant.utilizationPercent ?? 0)}
                   </span>
                 </div>
-                <Progress value={grant.utilizationPercent} className="h-3" />
+                <Progress value={grant.utilizationPercent ?? 0} className="h-3" />
                 <div className="mt-6 grid grid-cols-3 gap-4 text-center">
                   <div>
                     <p className="text-lg font-bold text-primary">
-                      {formatPercent((grant.spent / grant.totalBudget) * 100)}
+                      {formatPercent(
+                        Number(grant.totalBudget) > 0
+                          ? (Number(grant.spentAmount) / Number(grant.totalBudget)) * 100
+                          : 0
+                      )}
                     </p>
                     <p className="text-xs text-muted-foreground">Spent</p>
                   </div>
                   <div>
                     <p className="text-lg font-bold">
-                      {formatPercent(((grant.committed - grant.spent) / grant.totalBudget) * 100)}
+                      {formatPercent(
+                        Number(grant.totalBudget) > 0
+                          ? (Number(grant.committedAmount) / Number(grant.totalBudget)) * 100
+                          : 0
+                      )}
                     </p>
                     <p className="text-xs text-muted-foreground">Committed</p>
                   </div>
                   <div>
                     <p className="text-lg font-bold text-success">
-                      {formatPercent((grant.available / grant.totalBudget) * 100)}
+                      {formatPercent(
+                        Number(grant.totalBudget) > 0
+                          ? (Number(grant.availableAmount) / Number(grant.totalBudget)) * 100
+                          : 0
+                      )}
                     </p>
                     <p className="text-xs text-muted-foreground">Available</p>
                   </div>
@@ -156,28 +256,77 @@ export default function GrantDetailPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="activities">
+        <TabsContent value="activities" className="space-y-4">
+          <div className="flex justify-end">
+            <PermissionGate permission="ACTIVITIES:CREATE">
+              <Button asChild>
+                <Link href={`/grants/${grantId}/activities/new`}>
+                  <Plus className="h-4 w-4" />
+                  Add Activity
+                </Link>
+              </Button>
+            </PermissionGate>
+          </div>
+
           <Card>
             <CardContent className="p-0">
               <div className="divide-y">
                 {activities.length > 0 ? (
                   activities.map((activity) => (
-                    <div key={activity.id} className="flex items-center justify-between p-4">
-                      <div>
-                        <p className="font-medium">{activity.title}</p>
+                    <div key={activity.id} className="flex items-center justify-between gap-4 p-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium">{activity.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {activity.responsibleStaff} · {activity.milestone}
+                          {activity.code}
+                          {activity.responsibleUser &&
+                            ` · ${activity.responsibleUser.firstName} ${activity.responsibleUser.lastName}`}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDate(activity.startDate)} — {formatDate(activity.endDate)}
+                          {" · "}
+                          {formatCurrency(Number(activity.plannedBudget), grant.currency)}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <p className="font-medium">{activity.progress}%</p>
-                        <Progress value={activity.progress} className="mt-1 h-2 w-24" />
+                      <div className="flex shrink-0 items-center gap-3">
+                        <div className="text-right">
+                          <StatusBadge status={activity.status.toLowerCase()} />
+                          <p className="mt-1 font-medium">{Number(activity.progressPercent)}%</p>
+                          <Progress
+                            value={Number(activity.progressPercent)}
+                            className="mt-1 h-2 w-24"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <PermissionGate permission="ACTIVITIES:UPDATE">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setEditActivity(activity)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              Edit
+                            </Button>
+                          </PermissionGate>
+                          <PermissionGate permission="ACTIVITIES:DELETE">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => setDeleteActivityTarget(activity)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              Delete
+                            </Button>
+                          </PermissionGate>
+                        </div>
                       </div>
                     </div>
                   ))
                 ) : (
                   <p className="p-8 text-center text-muted-foreground">
-                    No activities linked to this grant yet.
+                    No activities yet. Add work packages under this grant/project.
                   </p>
                 )}
               </div>
@@ -185,48 +334,102 @@ export default function GrantDetailPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="budget">
+        <TabsContent value="budget" className="space-y-6">
           <Card>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                {[
-                  { label: "Total Budget", amount: grant.totalBudget },
-                  { label: "Committed", amount: grant.committed },
-                  { label: "Actual Expenses", amount: grant.spent },
-                  { label: "Remaining Balance", amount: grant.available },
-                ].map((row) => (
-                  <div key={row.label} className="flex justify-between border-b pb-3">
-                    <span className="text-muted-foreground">{row.label}</span>
-                    <span className="font-semibold">
-                      {formatCurrency(row.amount, grant.currency)}
-                    </span>
-                  </div>
-                ))}
-              </div>
+            <CardHeader>
+              <CardTitle>Grant Budget Summary</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[
+                { label: "Total Budget", amount: Number(grant.totalBudget) },
+                { label: "Committed", amount: Number(grant.committedAmount) },
+                { label: "Actual Expenses", amount: Number(grant.spentAmount) },
+                { label: "Remaining Balance", amount: Number(grant.availableAmount) },
+                { label: "Allocated to Activities", amount: activityAllocated },
+                { label: "Unallocated Activity Budget", amount: activityUnallocated },
+              ].map((row) => (
+                <div key={row.label} className="flex justify-between border-b pb-3">
+                  <span className="text-muted-foreground">{row.label}</span>
+                  <span className="font-semibold">
+                    {formatCurrency(row.amount, grant.currency)}
+                  </span>
+                </div>
+              ))}
             </CardContent>
           </Card>
+
+          {grant.budgetLines && grant.budgetLines.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Budget Lines</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="divide-y">
+                  {grant.budgetLines.map((line) => (
+                    <div key={line.id} className="flex justify-between p-4">
+                      <div>
+                        <p className="font-medium">{line.description}</p>
+                        <p className="text-xs text-muted-foreground">{line.code}</p>
+                      </div>
+                      <p className="font-semibold">
+                        {formatCurrency(Number(line.totalBudget), grant.currency)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="documents">
           <Card>
             <CardContent className="p-6">
               <div className="space-y-3">
-                {["Grant Agreement", "Budget Breakdown", "Quarterly Report Q1", "Donor Compliance Checklist"].map(
-                  (doc) => (
-                    <div
-                      key={doc}
-                      className="flex items-center gap-3 rounded-xl border p-4 hover:bg-muted/50"
-                    >
-                      <FileText className="h-5 w-5 text-primary" />
-                      <span className="font-medium">{doc}</span>
-                    </div>
-                  )
-                )}
+                {["Grant Agreement", "Budget Breakdown", "Work Plan"].map((doc) => (
+                  <div
+                    key={doc}
+                    className="flex items-center gap-3 rounded-xl border p-4 hover:bg-muted/50"
+                  >
+                    <FileText className="h-5 w-5 text-primary" />
+                    <span className="font-medium">{doc}</span>
+                  </div>
+                ))}
+                <p className="text-sm text-muted-foreground">
+                  Upload documents when creating or editing a grant.
+                </p>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      <ConfirmDialog
+        open={deleteGrantOpen}
+        onOpenChange={setDeleteGrantOpen}
+        title="Delete grant?"
+        description={`This will remove grant "${grant.name}" and hide it from lists. This action cannot be undone.`}
+        confirmLabel="Delete Grant"
+        variant="destructive"
+        onConfirm={handleDeleteGrant}
+      />
+
+      <ConfirmDialog
+        open={!!deleteActivityTarget}
+        onOpenChange={(open) => !open && setDeleteActivityTarget(null)}
+        title="Delete activity?"
+        description={`Remove activity "${deleteActivityTarget?.name ?? ""}" from this grant?`}
+        confirmLabel="Delete Activity"
+        variant="destructive"
+        onConfirm={handleDeleteActivity}
+      />
+
+      <ActivityEditDialog
+        open={!!editActivity}
+        onOpenChange={(open) => !open && setEditActivity(null)}
+        activity={editActivity}
+        grantId={grantId}
+      />
     </div>
   );
 }

@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
+  Building2,
   Bookmark,
-  FolderKanban,
   Activity,
   ShoppingCart,
   Wallet,
@@ -44,11 +44,28 @@ interface NavItem {
   children?: { title: string; href: string; icon: React.ElementType }[];
 }
 
+function isChildNavActive(
+  pathname: string,
+  href: string,
+  siblings: { href: string }[]
+): boolean {
+  if (pathname === href) return true;
+  if (!pathname.startsWith(`${href}/`)) return false;
+
+  const hasMoreSpecificMatch = siblings.some(
+    (sibling) =>
+      sibling.href !== href &&
+      sibling.href.startsWith(href) &&
+      (pathname === sibling.href || pathname.startsWith(`${sibling.href}/`))
+  );
+
+  return !hasMoreSpecificMatch;
+}
+
 const navigation: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Grant Management", href: "/grants", icon: Bookmark },
-  { title: "Projects", href: "/projects", icon: FolderKanban },
-  { title: "Activities", href: "/activities", icon: Activity },
+  { title: "Activities", href: "/projects", icon: Activity },
   {
     title: "Procurement",
     icon: ShoppingCart,
@@ -76,8 +93,15 @@ const navigation: NavItem[] = [
   },
   { title: "Reports", href: "/reports", icon: BarChart3 },
   { title: "Audit", href: "/audit", icon: Shield },
-  { title: "Settings", href: "/settings", icon: Settings },
-  { title: "User Management", href: "/settings/users", icon: Users },
+  {
+    title: "Settings",
+    icon: Settings,
+    children: [
+      { title: "General", href: "/settings", icon: Settings },
+      { title: "Donor Management", href: "/settings/donors", icon: Building2 },
+      { title: "User Management", href: "/settings/users", icon: Users },
+    ],
+  },
 ];
 
 function NavLink({
@@ -130,7 +154,7 @@ function NavLink({
               className="ml-4 mt-1 space-y-1 overflow-hidden border-l border-border pl-3"
             >
               {item.children.map((child) => {
-                const childActive = pathname.startsWith(child.href);
+                const childActive = isChildNavActive(pathname, child.href, item.children!);
                 return (
                   <Link
                     key={child.href}

@@ -1,0 +1,4 @@
+{"sessionId":"d2f8d8","location":"auth.ts:33","message":"apiLogin called","data":{"baseURL":"http://localhost:3001/api","email":"admin@gaderon.org"},"runId":"run1","hypothesisId":"C","timestamp":1783938698045}
+{"sessionId":"d2f8d8","location":"auth.ts:40","message":"apiLogin error","data":{"code":"ERR_NETWORK","message":"Network Error","requestURL":"/auth/login","requestBaseURL":"http://localhost:3001/api"},"runId":"run1","hypothesisId":"A-B-C-D","timestamp":1783938700398}
+{"sessionId":"d2f8d8","location":"auth.ts:33","message":"apiLogin called","data":{"baseURL":"http://localhost:3001/api","email":"admin@gaderon.org"},"runId":"run1","hypothesisId":"C","timestamp":1783938732897}
+{"sessionId":"d2f8d8","location":"auth.ts:40","message":"apiLogin error","data":{"code":"ERR_NETWORK","message":"Network Error","requestURL":"/auth/login","requestBaseURL":"http://localhost:3001/api"},"runId":"run1","hypothesisId":"A-B-C-D","timestamp":1783938735260}

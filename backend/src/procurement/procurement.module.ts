@@ -1,0 +1,36 @@
+import { Module } from '@nestjs/common';
+import { RequisitionsController } from './requisitions/requisitions.controller';
+import { RequisitionsService } from './requisitions/requisitions.service';
+import { VendorsController } from './vendors/vendors.controller';
+import { VendorsService } from './vendors/vendors.service';
+import { RfqController } from './rfq/rfq.controller';
+import { RfqService } from './rfq/rfq.service';
+import { PurchaseOrdersController } from './purchase-orders/purchase-orders.controller';
+import { PurchaseOrdersService } from './purchase-orders/purchase-orders.service';
+import { GoodsReceiptController } from './goods-receipt/goods-receipt.controller';
+import { GoodsReceiptService } from './goods-receipt/goods-receipt.service';
+import { ContractsController } from './contracts/contracts.controller';
+import { ContractsService } from './contracts/contracts.service';
+import { GrantsModule } from '../grants/grants.module';
+
+@Module({
+  imports: [GrantsModule],
+  controllers: [
+    RequisitionsController,
+    VendorsController,
+    RfqController,
+    PurchaseOrdersController,
+    GoodsReceiptController,
+    ContractsController,
+  ],
+  providers: [
+    RequisitionsService,
+    VendorsService,
+    RfqService,
+    PurchaseOrdersService,
+    GoodsReceiptService,
+    ContractsService,
+  ],
+  exports: [PurchaseOrdersService, GoodsReceiptService],
+})
+export class ProcurementModule {}

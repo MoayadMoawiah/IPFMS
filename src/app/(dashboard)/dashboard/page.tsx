@@ -22,10 +22,11 @@ import {
 import { RecentActivitiesTimeline } from "@/components/dashboard/recent-activities";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { dashboardKPIs } from "@/lib/mock-data/dashboard";
-import { currentUser, organization } from "@/lib/mock-data/users";
 import { staggerContainer, slideUp } from "@/lib/motion";
+import { useAuthStore } from "@/store/auth.store";
 
 export default function DashboardPage() {
+  const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,9 +47,9 @@ export default function DashboardPage() {
             animate={{ opacity: 1, y: 0 }}
             className="text-display"
           >
-            Welcome back, {currentUser.firstName} 👋
+            Welcome back, {user?.firstName ?? 'User'} 👋
           </motion.h1>
-          <p className="mt-1 text-muted">{organization.tagline}</p>
+          <p className="mt-1 text-muted">Gaderon G-GPFMS — Enterprise ERP</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Select defaultValue="all">

@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { PageHeader } from "@/components/layout/page-header";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -12,13 +15,76 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { toast } from "@/hooks/use-toast";
+import {
+  FormActions,
+  FormErrorBanner,
+  FormField,
+  FormSection,
+} from "@/components/forms/form-layout";
 import { organization, fiscalYears } from "@/lib/mock-data/users";
+import { toast } from "@/hooks/use-toast";
+
+const schema = z.object({
+  name: z.string().min(1, "Organization name is required"),
+  nameAr: z.string().optional(),
+  tagline: z.string().optional(),
+  fiscalYear: z.string().min(1, "Fiscal year is required"),
+  fiscalYearStart: z.string().min(1, "Fiscal year start is required"),
+  prApprovalNotifications: z.boolean(),
+  paymentStatusUpdates: z.boolean(),
+  budgetAlertThresholds: z.boolean(),
+  grantReportReminders: z.boolean(),
+});
+
+type FormValues = z.infer<typeof schema>;
 
 export default function SettingsPage() {
-  const handleSave = () => {
-    toast({ title: "Settings Saved", description: "Organization settings updated successfully." });
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      name: organization.name,
+      nameAr: organization.nameAr,
+      tagline: organization.tagline,
+      fiscalYear: "2025",
+      fiscalYearStart: "January 1",
+      prApprovalNotifications: true,
+      paymentStatusUpdates: true,
+      budgetAlertThresholds: true,
+      grantReportReminders: false,
+    },
+  });
+
+  const notificationPrefs = [
+    { key: "prApprovalNotifications" as const, label: "PR Approval Notifications" },
+    { key: "paymentStatusUpdates" as const, label: "Payment Status Updates" },
+    { key: "budgetAlertThresholds" as const, label: "Budget Alert Thresholds" },
+    { key: "grantReportReminders" as const, label: "Grant Report Reminders" },
+  ];
+
+  const onSubmit = async (values: FormValues) => {
+    setSubmitError(null);
+    setIsSaving(true);
+    try {
+      // Settings API not yet available — simulate save
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      toast({
+        title: "Settings Saved",
+        description: `${values.name} settings updated successfully.`,
+      });
+    } catch {
+      setSubmitError("Failed to save settings. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -30,77 +96,100 @@ export default function SettingsPage() {
           { label: "Dashboard", href: "/dashboard" },
           { label: "Settings" },
         ]}
-        actions={<Button onClick={handleSave}>Save Changes</Button>}
       />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Organization Profile</CardTitle>
-            <CardDescription>Basic organization information</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Organization Name</Label>
-              <Input defaultValue={organization.name} />
-            </div>
-            <div className="space-y-2">
-              <Label>Arabic Name</Label>
-              <Input defaultValue={organization.nameAr} dir="rtl" />
-            </div>
-            <div className="space-y-2">
-              <Label>System Tagline</Label>
-              <Input defaultValue={organization.tagline} />
-            </div>
-          </CardContent>
-        </Card>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-4xl">
+        {submitError && <FormErrorBanner message={submitError} />}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Fiscal Year Configuration</CardTitle>
-            <CardDescription>Financial period settings</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Current Fiscal Year</Label>
-              <Select defaultValue="2025">
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {fiscalYears.map((fy) => (
-                    <SelectItem key={fy} value={fy}>FY {fy}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Fiscal Year Start</Label>
-              <Input type="text" defaultValue="January 1" />
-            </div>
-          </CardContent>
-        </Card>
+        <FormSection
+          title="Organization Profile"
+          description="Basic organization information"
+          contentClassName="grid-cols-1"
+        >
+          <FormField
+            label="Organization Name"
+            htmlFor="name"
+            required
+            error={errors.name?.message}
+          >
+            <Input id="name" {...register("name")} />
+          </FormField>
 
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Notification Preferences</CardTitle>
-            <CardDescription>Manage email and in-app notifications</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {[
-              { label: "PR Approval Notifications", defaultChecked: true },
-              { label: "Payment Status Updates", defaultChecked: true },
-              { label: "Budget Alert Thresholds", defaultChecked: true },
-              { label: "Grant Report Reminders", defaultChecked: false },
-            ].map((pref) => (
-              <div key={pref.label} className="flex items-center justify-between rounded-xl border p-4">
-                <Label htmlFor={pref.label}>{pref.label}</Label>
-                <Switch id={pref.label} defaultChecked={pref.defaultChecked} />
+          <FormField label="Arabic Name" htmlFor="nameAr">
+            <Input id="nameAr" dir="rtl" {...register("nameAr")} />
+          </FormField>
+
+          <FormField label="System Tagline" htmlFor="tagline" className="sm:col-span-2">
+            <Input id="tagline" {...register("tagline")} />
+          </FormField>
+        </FormSection>
+
+        <FormSection
+          title="Fiscal Year Configuration"
+          description="Financial period settings"
+        >
+          <FormField
+            label="Current Fiscal Year"
+            htmlFor="fiscalYear"
+            required
+            error={errors.fiscalYear?.message}
+          >
+            <Select
+              value={watch("fiscalYear")}
+              onValueChange={(v) => setValue("fiscalYear", v, { shouldValidate: true })}
+            >
+              <SelectTrigger id="fiscalYear">
+                <SelectValue placeholder="Select fiscal year" />
+              </SelectTrigger>
+              <SelectContent>
+                {fiscalYears.map((fy) => (
+                  <SelectItem key={fy} value={fy}>
+                    FY {fy}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+
+          <FormField
+            label="Fiscal Year Start"
+            htmlFor="fiscalYearStart"
+            required
+            error={errors.fiscalYearStart?.message}
+          >
+            <Input id="fiscalYearStart" {...register("fiscalYearStart")} />
+          </FormField>
+        </FormSection>
+
+        <FormSection
+          title="Notification Preferences"
+          description="Manage email and in-app notifications"
+          contentClassName="grid-cols-1"
+        >
+          <div className="space-y-4 sm:col-span-2">
+            {notificationPrefs.map((pref) => (
+              <div
+                key={pref.key}
+                className="flex items-center justify-between rounded-lg border p-4"
+              >
+                <Label htmlFor={pref.key}>{pref.label}</Label>
+                <Switch
+                  id={pref.key}
+                  checked={watch(pref.key)}
+                  onCheckedChange={(checked) => setValue(pref.key, checked)}
+                />
               </div>
             ))}
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </FormSection>
+
+        <FormActions
+          submitLabel="Save Changes"
+          submittingLabel="Saving…"
+          cancelHref="/dashboard"
+          isSubmitting={isSaving}
+        />
+      </form>
     </div>
   );
 }

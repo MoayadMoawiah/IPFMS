@@ -1,0 +1,7 @@
+{"sessionId":"5ee055","runId":"pre-fix","hypothesisId":"H1-H4","location":"middleware.ts:entry","message":"middleware reached","data":{"pathname":"/login","hasSession":false},"timestamp":1783944686672}
+{"sessionId":"5ee055","runId":"pre-fix","hypothesisId":"H1-H4","location":"middleware.ts:entry","message":"middleware reached","data":{"pathname":"/grants","hasSession":false},"timestamp":1783944692626}
+{"sessionId":"5ee055","runId":"pre-fix","hypothesisId":"H1-H4","location":"middleware.ts:entry","message":"middleware reached","data":{"pathname":"/login","hasSession":false},"timestamp":1783944692640}
+{"sessionId":"5ee055","runId":"pre-fix","hypothesisId":"H1-H4","location":"middleware.ts:entry","message":"middleware reached","data":{"pathname":"/","hasSession":false},"timestamp":1783944704610}
+{"sessionId":"5ee055","runId":"pre-fix","hypothesisId":"H1-H4","location":"middleware.ts:entry","message":"middleware reached","data":{"pathname":"/login","hasSession":false},"timestamp":1783944704624}
+{"sessionId":"5ee055","runId":"pre-fix","hypothesisId":"H1-H4","location":"middleware.ts:entry","message":"middleware reached","data":{"pathname":"/brand/gaderon-logo.png","hasSession":false},"timestamp":1783944704876}
+{"sessionId":"5ee055","runId":"pre-fix","hypothesisId":"H1-H4","location":"middleware.ts:entry","message":"middleware reached","data":{"pathname":"/","hasSession":true},"timestamp":1783944706950}

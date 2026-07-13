@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function ActivitiesPage() {
+export default function ActivitiesRedirectPage() {
   redirect("/projects");
 }

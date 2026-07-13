@@ -1,0 +1,406 @@
+import { PaymentsService } from './payments.service';
+import { UserPayload } from '../../common/decorators/current-user.decorator';
+export declare class PaymentsController {
+    private readonly svc;
+    constructor(svc: PaymentsService);
+    findVouchers(q: any): Promise<{
+        data: ({
+            grant: {
+                id: string;
+                code: string;
+            };
+        } & {
+            id: string;
+            description: string;
+            createdAt: Date;
+            updatedAt: Date;
+            status: import(".prisma/client").$Enums.DocumentStatus;
+            deletedAt: Date | null;
+            serialNumber: string;
+            paymentRequestId: string | null;
+            grantId: string;
+            payeeType: import(".prisma/client").$Enums.PayeeType;
+            payeeId: string | null;
+            payeeName: string;
+            paymentDate: Date;
+            currency: string;
+            amount: import(".prisma/client/runtime/library").Decimal;
+            exchangeRate: import(".prisma/client/runtime/library").Decimal;
+            baseAmount: import(".prisma/client/runtime/library").Decimal;
+            reference: string | null;
+            workflowInstanceId: string | null;
+            createdById: string | null;
+        })[];
+        meta: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+        };
+    }>;
+    createVoucher(dto: any, user: UserPayload): Promise<{
+        id: string;
+        description: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import(".prisma/client").$Enums.DocumentStatus;
+        deletedAt: Date | null;
+        serialNumber: string;
+        paymentRequestId: string | null;
+        grantId: string;
+        payeeType: import(".prisma/client").$Enums.PayeeType;
+        payeeId: string | null;
+        payeeName: string;
+        paymentDate: Date;
+        currency: string;
+        amount: import(".prisma/client/runtime/library").Decimal;
+        exchangeRate: import(".prisma/client/runtime/library").Decimal;
+        baseAmount: import(".prisma/client/runtime/library").Decimal;
+        reference: string | null;
+        workflowInstanceId: string | null;
+        createdById: string | null;
+    }>;
+    findOneVoucher(id: string): Promise<{
+        paymentRequest: ({
+            invoice: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                status: import(".prisma/client").$Enums.InvoiceStatus;
+                deletedAt: Date | null;
+                serialNumber: string;
+                grantId: string;
+                currency: string;
+                workflowInstanceId: string | null;
+                createdById: string | null;
+                notes: string | null;
+                vendorId: string;
+                subtotal: import(".prisma/client/runtime/library").Decimal;
+                taxAmount: import(".prisma/client/runtime/library").Decimal;
+                totalAmount: import(".prisma/client/runtime/library").Decimal;
+                paidAmount: import(".prisma/client/runtime/library").Decimal;
+                poId: string;
+                invoiceNumber: string;
+                invoiceDate: Date;
+                dueDate: Date | null;
+                isThreeWayMatched: boolean;
+                matchedAt: Date | null;
+                matchedById: string | null;
+                fileUrl: string | null;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            status: import(".prisma/client").$Enums.DocumentStatus;
+            deletedAt: Date | null;
+            serialNumber: string;
+            grantId: string;
+            currency: string;
+            workflowInstanceId: string | null;
+            createdById: string | null;
+            notes: string | null;
+            totalAmount: import(".prisma/client/runtime/library").Decimal;
+            invoiceId: string;
+            requestDate: Date;
+            paymentMethod: import(".prisma/client").$Enums.PaymentMethod;
+            bankAccountId: string | null;
+        }) | null;
+        grant: {
+            name: string;
+            id: string;
+            description: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            status: import(".prisma/client").$Enums.GrantStatus;
+            deletedAt: Date | null;
+            totalBudget: import(".prisma/client/runtime/library").Decimal;
+            spentAmount: import(".prisma/client/runtime/library").Decimal;
+            committedAmount: import(".prisma/client/runtime/library").Decimal;
+            targetBeneficiaries: number | null;
+            currency: string;
+            createdById: string | null;
+            code: string;
+            donorId: string;
+            fiscalYearId: string | null;
+            startDate: Date;
+            endDate: Date;
+            signedDate: Date | null;
+            objectives: string | null;
+            conditions: string | null;
+            coverageArea: string | null;
+            reportingRequirements: string | null;
+            grantManagerId: string | null;
+            projectCoordinatorId: string | null;
+        };
+        workflow: ({
+            steps: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                action: string | null;
+                status: import(".prisma/client").$Enums.StepStatus;
+                stepNumber: number;
+                startedAt: Date | null;
+                completedAt: Date | null;
+                instanceId: string;
+                stepName: string;
+                assignedUserId: string | null;
+                assignedRoleId: string | null;
+                dueAt: Date | null;
+                comment: string | null;
+                digitalSignatureId: string | null;
+            }[];
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            status: import(".prisma/client").$Enums.WorkflowStatus;
+            templateId: string;
+            documentType: string;
+            documentId: string;
+            currentStepNumber: number;
+            startedAt: Date;
+            completedAt: Date | null;
+        }) | null;
+        payments: ({
+            cheques: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                status: import(".prisma/client").$Enums.ChequeStatus;
+                serialNumber: string;
+                payeeName: string;
+                currency: string;
+                amount: import(".prisma/client/runtime/library").Decimal;
+                issuedAt: Date | null;
+                bankAccountId: string;
+                fileUrl: string | null;
+                paymentId: string;
+                chequeNumber: string;
+                chequeDate: Date;
+                memo: string | null;
+                printedAt: Date | null;
+                clearedAt: Date | null;
+            }[];
+            bankTransfers: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                status: import(".prisma/client").$Enums.BankTransferStatus;
+                serialNumber: string;
+                currency: string;
+                amount: import(".prisma/client/runtime/library").Decimal;
+                exchangeRate: import(".prisma/client/runtime/library").Decimal;
+                baseAmount: import(".prisma/client/runtime/library").Decimal;
+                reference: string | null;
+                fileUrl: string | null;
+                completedAt: Date | null;
+                paymentId: string;
+                fromBankAccountId: string;
+                toBankAccount: string;
+                toBankName: string;
+                toAccountName: string;
+                transferDate: Date;
+                swiftRef: string | null;
+            }[];
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            status: import(".prisma/client").$Enums.PaymentStatus;
+            paymentDate: Date;
+            currency: string;
+            amount: import(".prisma/client/runtime/library").Decimal;
+            exchangeRate: import(".prisma/client/runtime/library").Decimal;
+            baseAmount: import(".prisma/client/runtime/library").Decimal;
+            reference: string | null;
+            createdById: string | null;
+            journalEntryId: string | null;
+            paymentMethod: import(".prisma/client").$Enums.PaymentMethod;
+            bankAccountId: string | null;
+            paymentVoucherId: string;
+        })[];
+    } & {
+        id: string;
+        description: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import(".prisma/client").$Enums.DocumentStatus;
+        deletedAt: Date | null;
+        serialNumber: string;
+        paymentRequestId: string | null;
+        grantId: string;
+        payeeType: import(".prisma/client").$Enums.PayeeType;
+        payeeId: string | null;
+        payeeName: string;
+        paymentDate: Date;
+        currency: string;
+        amount: import(".prisma/client/runtime/library").Decimal;
+        exchangeRate: import(".prisma/client/runtime/library").Decimal;
+        baseAmount: import(".prisma/client/runtime/library").Decimal;
+        reference: string | null;
+        workflowInstanceId: string | null;
+        createdById: string | null;
+    }>;
+    submitVoucher(id: string, user: UserPayload): Promise<{
+        id: string;
+        description: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import(".prisma/client").$Enums.DocumentStatus;
+        deletedAt: Date | null;
+        serialNumber: string;
+        paymentRequestId: string | null;
+        grantId: string;
+        payeeType: import(".prisma/client").$Enums.PayeeType;
+        payeeId: string | null;
+        payeeName: string;
+        paymentDate: Date;
+        currency: string;
+        amount: import(".prisma/client/runtime/library").Decimal;
+        exchangeRate: import(".prisma/client/runtime/library").Decimal;
+        baseAmount: import(".prisma/client/runtime/library").Decimal;
+        reference: string | null;
+        workflowInstanceId: string | null;
+        createdById: string | null;
+    }>;
+    approveVoucher(id: string, body: {
+        comment?: string;
+    }, user: UserPayload): Promise<{
+        steps: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            action: string | null;
+            status: import(".prisma/client").$Enums.StepStatus;
+            stepNumber: number;
+            startedAt: Date | null;
+            completedAt: Date | null;
+            instanceId: string;
+            stepName: string;
+            assignedUserId: string | null;
+            assignedRoleId: string | null;
+            dueAt: Date | null;
+            comment: string | null;
+            digitalSignatureId: string | null;
+        }[];
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import(".prisma/client").$Enums.WorkflowStatus;
+        templateId: string;
+        documentType: string;
+        documentId: string;
+        currentStepNumber: number;
+        startedAt: Date;
+        completedAt: Date | null;
+    }>;
+    markPaid(id: string, dto: any, user: UserPayload): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import(".prisma/client").$Enums.PaymentStatus;
+        paymentDate: Date;
+        currency: string;
+        amount: import(".prisma/client/runtime/library").Decimal;
+        exchangeRate: import(".prisma/client/runtime/library").Decimal;
+        baseAmount: import(".prisma/client/runtime/library").Decimal;
+        reference: string | null;
+        createdById: string | null;
+        journalEntryId: string | null;
+        paymentMethod: import(".prisma/client").$Enums.PaymentMethod;
+        bankAccountId: string | null;
+        paymentVoucherId: string;
+    }>;
+    findCheques(q: any): Promise<{
+        data: ({
+            bankAccount: {
+                id: string;
+                accountName: string;
+                bankName: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            status: import(".prisma/client").$Enums.ChequeStatus;
+            serialNumber: string;
+            payeeName: string;
+            currency: string;
+            amount: import(".prisma/client/runtime/library").Decimal;
+            issuedAt: Date | null;
+            bankAccountId: string;
+            fileUrl: string | null;
+            paymentId: string;
+            chequeNumber: string;
+            chequeDate: Date;
+            memo: string | null;
+            printedAt: Date | null;
+            clearedAt: Date | null;
+        })[];
+        meta: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+        };
+    }>;
+    updateCheque(id: string, body: {
+        status: string;
+    }, user: UserPayload): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import(".prisma/client").$Enums.ChequeStatus;
+        serialNumber: string;
+        payeeName: string;
+        currency: string;
+        amount: import(".prisma/client/runtime/library").Decimal;
+        issuedAt: Date | null;
+        bankAccountId: string;
+        fileUrl: string | null;
+        paymentId: string;
+        chequeNumber: string;
+        chequeDate: Date;
+        memo: string | null;
+        printedAt: Date | null;
+        clearedAt: Date | null;
+    }>;
+    findTransfers(q: any): Promise<{
+        data: ({
+            fromBankAccount: {
+                id: string;
+                accountName: string;
+                bankName: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            status: import(".prisma/client").$Enums.BankTransferStatus;
+            serialNumber: string;
+            currency: string;
+            amount: import(".prisma/client/runtime/library").Decimal;
+            exchangeRate: import(".prisma/client/runtime/library").Decimal;
+            baseAmount: import(".prisma/client/runtime/library").Decimal;
+            reference: string | null;
+            fileUrl: string | null;
+            completedAt: Date | null;
+            paymentId: string;
+            fromBankAccountId: string;
+            toBankAccount: string;
+            toBankName: string;
+            toAccountName: string;
+            transferDate: Date;
+            swiftRef: string | null;
+        })[];
+        meta: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+        };
+    }>;
+}

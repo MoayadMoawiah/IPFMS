@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import {
-  Search,
   Bell,
   Globe,
   Moon,
@@ -12,7 +11,6 @@ import {
   Menu,
   LogOut,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -34,17 +32,19 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { useGrantContext } from "@/hooks/use-grant-context";
-import { currentUser } from "@/lib/mock-data/users";
-import { notifications } from "@/lib/mock-data/dashboard";
 import { MobileSidebarContent } from "@/components/layout/app-sidebar";
-import { clearAuthToken } from "@/lib/auth";
 import { useRouter } from "next/navigation";
-import { organization } from "@/lib/mock-data/users";
+import { useAuth } from "@/hooks/use-auth";
+import { useAuthStore } from "@/store/auth.store";
+import { useUnreadNotificationCount, useMarkAllNotificationsRead } from "@/hooks/use-search";
+import { GlobalSearch } from "@/components/shared/global-search";
 
 export function TopNav() {
   const { theme, setTheme } = useTheme();
   const { toggle } = useSidebar();
   const router = useRouter();
+  const { logout } = useAuth();
+  const { user } = useAuthStore();
   const {
     currentGrantId,
     setCurrentGrantId,
@@ -54,12 +54,19 @@ export function TopNav() {
     fiscalYears,
   } = useGrantContext();
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const { data: notifCountData } = useUnreadNotificationCount();
+  const { mutate: markAllRead } = useMarkAllNotificationsRead();
+  const unreadCount = notifCountData?.count ?? 0;
 
-  const handleLogout = () => {
-    clearAuthToken();
-    router.push("/login");
+  const handleLogout = async () => {
+    await logout();
   };
+
+  const userInitials = user
+    ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase()
+    : 'U';
+  const userDisplayName = user ? `${user.firstName} ${user.lastName}` : 'User';
+  const userRole = user?.roles?.[0] ?? 'Staff';
 
   return (
     <header className="no-print sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-border bg-card/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-card/80 lg:px-6">
@@ -101,13 +108,12 @@ export function TopNav() {
           className="h-7 w-auto lg:hidden"
         />
         <span className="hidden text-sm font-medium text-muted-foreground xl:inline">
-          {organization.name}
+          Gaderon Organization
         </span>
       </div>
 
       <div className="relative mx-auto hidden max-w-md flex-1 md:block">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Search..." className="pl-9" />
+        <GlobalSearch />
       </div>
 
       <div className="ml-auto flex items-center gap-2">
@@ -152,15 +158,18 @@ export function TopNav() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+            <DropdownMenuLabel className="flex items-center justify-between">
+              <span>Notifications</span>
+              {unreadCount > 0 && (
+                <button onClick={() => markAllRead()} className="text-xs text-primary hover:underline">
+                  Mark all read
+                </button>
+              )}
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {notifications.map((n) => (
-              <DropdownMenuItem key={n.id} className="flex flex-col items-start gap-1 p-3">
-                <span className="font-medium">{n.title}</span>
-                <span className="text-xs text-muted-foreground">{n.message}</span>
-                <span className="text-xs text-muted-foreground">{n.time}</span>
-              </DropdownMenuItem>
-            ))}
+            <DropdownMenuItem className="text-xs text-muted-foreground">
+              {unreadCount === 0 ? 'No new notifications' : `${unreadCount} unread notifications`}
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -182,12 +191,12 @@ export function TopNav() {
             <Button variant="ghost" className="gap-2 px-2">
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary text-xs text-primary-foreground">
-                  {currentUser.avatar}
+                  {userInitials}
                 </AvatarFallback>
               </Avatar>
               <div className="hidden text-left lg:block">
-                <p className="text-sm font-medium">{currentUser.name}</p>
-                <p className="text-xs text-muted-foreground">{currentUser.role}</p>
+                <p className="text-sm font-medium">{userDisplayName}</p>
+                <p className="text-xs text-muted-foreground">{userRole}</p>
               </div>
             </Button>
           </DropdownMenuTrigger>

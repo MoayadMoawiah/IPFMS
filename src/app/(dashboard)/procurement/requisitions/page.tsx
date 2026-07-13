@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -14,45 +15,79 @@ import {
 import { PageHeader } from "@/components/layout/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { purchaseRequisitions } from "@/lib/mock-data/procurement";
-import type { PurchaseRequisition } from "@/types";
+import { LoadingSkeleton } from "@/components/shared/loading-skeleton";
+import { usePurchaseRequisitions } from "@/hooks/use-procurement";
+import { getPaginatedItems } from "@/lib/api/pagination";
+import { mapPurchaseRequisitionRow } from "@/lib/mappers/api-list-mappers";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
-const columns: ColumnDef<PurchaseRequisition>[] = [
+interface PR {
+  id: string;
+  prNumber: string;
+  title: string;
+  grantCode?: string;
+  departmentName?: string;
+  totalAmount: number;
+  currency: string;
+  status: string;
+  createdAt: string;
+  requester?: { firstName: string; lastName: string };
+}
+
+const columns: ColumnDef<PR>[] = [
   {
-    accessorKey: "number",
+    accessorKey: "prNumber",
     header: "PR Number",
     cell: ({ row }) => (
       <Link
         href={`/procurement/requisitions/${row.original.id}`}
         className="font-medium text-primary hover:underline"
       >
-        {row.original.number}
+        {row.original.prNumber}
       </Link>
     ),
   },
   { accessorKey: "title", header: "Title" },
-  { accessorKey: "grantName", header: "Grant" },
-  { accessorKey: "department", header: "Department" },
-  { accessorKey: "requestedBy", header: "Requested By" },
   {
-    accessorKey: "requestDate",
+    accessorKey: "grantCode",
+    header: "Grant",
+    cell: ({ row }) => row.original.grantCode ?? '—',
+  },
+  {
+    accessorKey: "requester",
+    header: "Requested By",
+    cell: ({ row }) => row.original.requester
+      ? `${row.original.requester.firstName} ${row.original.requester.lastName}`
+      : '—',
+  },
+  {
+    accessorKey: "createdAt",
     header: "Date",
-    cell: ({ row }) => formatDate(row.original.requestDate),
+    cell: ({ row }) => formatDate(row.original.createdAt),
   },
   {
     accessorKey: "totalAmount",
     header: "Amount",
-    cell: ({ row }) => formatCurrency(row.original.totalAmount),
+    cell: ({ row }) => formatCurrency(row.original.totalAmount, row.original.currency),
   },
   {
     accessorKey: "status",
     header: "Status",
-    cell: ({ row }) => <StatusBadge status={row.original.status} />,
+    cell: ({ row }) => <StatusBadge status={row.original.status.toLowerCase()} />,
   },
 ];
 
 export default function RequisitionsPage() {
+  const [statusFilter, setStatusFilter] = useState("all");
+  const { data, isLoading, isError } = usePurchaseRequisitions({
+    status: statusFilter !== "all" ? statusFilter.toUpperCase() : undefined,
+    limit: 50,
+  });
+
+  const prs = getPaginatedItems(data).map((pr) =>
+    mapPurchaseRequisitionRow(pr as Record<string, unknown>)
+  );
+
   return (
     <div>
       <PageHeader
@@ -73,25 +108,37 @@ export default function RequisitionsPage() {
         }
       />
 
-      <DataTable
-        columns={columns}
-        data={purchaseRequisitions}
-        searchKey="title"
-        searchPlaceholder="Search requisitions..."
-        filters={
-          <Select defaultValue="all">
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="submitted">Submitted</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-            </SelectContent>
-          </Select>
-        }
-      />
+      {isLoading && <LoadingSkeleton variant="table" />}
+
+      {isError && (
+        <div className="flex flex-col items-center gap-2 py-12 text-destructive">
+          <AlertCircle className="h-8 w-8" />
+          <p className="text-sm">Failed to load purchase requisitions</p>
+        </div>
+      )}
+
+      {!isLoading && !isError && (
+        <DataTable
+          columns={columns}
+          data={prs}
+          searchKey="title"
+          searchPlaceholder="Search requisitions..."
+          filters={
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="submitted">Submitted</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+          }
+        />
+      )}
     </div>
   );
 }
