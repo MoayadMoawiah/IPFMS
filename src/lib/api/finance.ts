@@ -61,8 +61,13 @@ export async function submitPaymentVoucher(id: string) {
   return data.data;
 }
 
+export async function approvePaymentVoucher(id: string, comment?: string) {
+  const { data } = await apiClient.post(`/finance/payment-vouchers/${id}/approve`, { comment });
+  return data.data;
+}
+
 export async function markPaymentVoucherPaid(id: string, paymentDetails: Record<string, unknown>) {
-  const { data } = await apiClient.post(`/finance/payment-vouchers/${id}/pay`, paymentDetails);
+  const { data } = await apiClient.post(`/finance/payment-vouchers/${id}/mark-paid`, paymentDetails);
   return data.data;
 }
 

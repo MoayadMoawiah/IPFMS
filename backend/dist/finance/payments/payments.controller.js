@@ -81,7 +81,7 @@ __decorate([
 ], PaymentsController.prototype, "approveVoucher", null);
 __decorate([
     (0, common_1.Post)('payment-vouchers/:id/mark-paid'),
-    (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:EXECUTE'),
+    (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:PAY'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, current_user_decorator_1.CurrentUser)()),

@@ -4,18 +4,19 @@ export declare class RequisitionsController {
     private readonly svc;
     constructor(svc: RequisitionsService);
     findAll(query: any, user: UserPayload): Promise<{
-        data: ({
+        data: {
+            approvalContext: import("../../workflow/workflow.service").ApprovalContext | null;
+            grant: {
+                id: string;
+                name: string;
+                code: string;
+            };
             _count: {
                 items: number;
             };
-            grant: {
-                name: string;
-                id: string;
-                code: string;
-            };
             procurementMethod: {
-                name: string;
                 id: string;
+                name: string;
                 code: string;
             } | null;
             requestedBy: {
@@ -23,28 +24,27 @@ export declare class RequisitionsController {
                 firstName: string;
                 lastName: string;
             };
-        } & {
             id: string;
-            description: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-            status: import(".prisma/client").$Enums.DocumentStatus;
-            deletedAt: Date | null;
             serialNumber: string;
             grantId: string;
-            currency: string;
-            workflowInstanceId: string | null;
-            appItemId: string | null;
-            activityId: string | null;
             budgetLineId: string | null;
             title: string;
+            currency: string;
+            status: import(".prisma/client").$Enums.DocumentStatus;
+            workflowInstanceId: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            deletedAt: Date | null;
+            description: string | null;
+            procurementMethodId: string | null;
+            justification: string | null;
+            appItemId: string | null;
+            activityId: string | null;
             requestedById: string;
             departmentId: string | null;
-            procurementMethodId: string | null;
             totalEstimatedAmount: import(".prisma/client/runtime/library").Decimal;
             requiredByDate: Date | null;
-            justification: string | null;
-        })[];
+        }[];
         meta: {
             total: number;
             page: number;
@@ -54,42 +54,42 @@ export declare class RequisitionsController {
     }>;
     create(dto: any, user: UserPayload): Promise<{
         grant: {
-            name: string;
             id: string;
-            description: string | null;
+            currency: string;
+            status: import(".prisma/client").$Enums.GrantStatus;
+            createdById: string | null;
             createdAt: Date;
             updatedAt: Date;
-            status: import(".prisma/client").$Enums.GrantStatus;
             deletedAt: Date | null;
-            totalBudget: import(".prisma/client/runtime/library").Decimal;
-            spentAmount: import(".prisma/client/runtime/library").Decimal;
-            committedAmount: import(".prisma/client/runtime/library").Decimal;
-            targetBeneficiaries: number | null;
-            currency: string;
-            createdById: string | null;
+            name: string;
             code: string;
             donorId: string;
             fiscalYearId: string | null;
+            totalBudget: import(".prisma/client/runtime/library").Decimal;
+            committedAmount: import(".prisma/client/runtime/library").Decimal;
+            spentAmount: import(".prisma/client/runtime/library").Decimal;
             startDate: Date;
             endDate: Date;
             signedDate: Date | null;
+            description: string | null;
             objectives: string | null;
             conditions: string | null;
             coverageArea: string | null;
+            targetBeneficiaries: number | null;
             reportingRequirements: string | null;
             grantManagerId: string | null;
             projectCoordinatorId: string | null;
         };
         items: {
             id: string;
-            description: string;
+            prId: string;
+            budgetLineId: string | null;
             createdAt: Date;
             updatedAt: Date;
-            budgetLineId: string | null;
-            prId: string;
+            description: string;
+            specification: string | null;
             unit: string;
             quantity: import(".prisma/client/runtime/library").Decimal;
-            specification: string | null;
             estimatedUnitPrice: import(".prisma/client/runtime/library").Decimal;
             totalEstimated: import(".prisma/client/runtime/library").Decimal;
         }[];
@@ -99,75 +99,93 @@ export declare class RequisitionsController {
         };
     } & {
         id: string;
-        description: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        status: import(".prisma/client").$Enums.DocumentStatus;
-        deletedAt: Date | null;
         serialNumber: string;
         grantId: string;
-        currency: string;
-        workflowInstanceId: string | null;
-        appItemId: string | null;
-        activityId: string | null;
         budgetLineId: string | null;
         title: string;
+        currency: string;
+        status: import(".prisma/client").$Enums.DocumentStatus;
+        workflowInstanceId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+        description: string | null;
+        procurementMethodId: string | null;
+        justification: string | null;
+        appItemId: string | null;
+        activityId: string | null;
         requestedById: string;
         departmentId: string | null;
-        procurementMethodId: string | null;
         totalEstimatedAmount: import(".prisma/client/runtime/library").Decimal;
         requiredByDate: Date | null;
-        justification: string | null;
     }>;
-    findOne(id: string): Promise<{
+    findOne(id: string, user: UserPayload): Promise<{
+        approvalContext: import("../../workflow/workflow.service").ApprovalContext | null;
+        procurementRoute: import("../../common/constants/procurement.constants").ProcurementRoute;
         grant: {
-            name: string;
             id: string;
-            description: string | null;
+            currency: string;
+            status: import(".prisma/client").$Enums.GrantStatus;
+            createdById: string | null;
             createdAt: Date;
             updatedAt: Date;
-            status: import(".prisma/client").$Enums.GrantStatus;
             deletedAt: Date | null;
-            totalBudget: import(".prisma/client/runtime/library").Decimal;
-            spentAmount: import(".prisma/client/runtime/library").Decimal;
-            committedAmount: import(".prisma/client/runtime/library").Decimal;
-            targetBeneficiaries: number | null;
-            currency: string;
-            createdById: string | null;
+            name: string;
             code: string;
             donorId: string;
             fiscalYearId: string | null;
+            totalBudget: import(".prisma/client/runtime/library").Decimal;
+            committedAmount: import(".prisma/client/runtime/library").Decimal;
+            spentAmount: import(".prisma/client/runtime/library").Decimal;
             startDate: Date;
             endDate: Date;
             signedDate: Date | null;
+            description: string | null;
             objectives: string | null;
             conditions: string | null;
             coverageArea: string | null;
+            targetBeneficiaries: number | null;
             reportingRequirements: string | null;
             grantManagerId: string | null;
             projectCoordinatorId: string | null;
         };
         workflow: ({
             steps: ({
-                digitalSignature: {
-                    userId: string;
+                digitalSignature: ({
+                    user: {
+                        id: string;
+                        firstName: string;
+                        lastName: string;
+                        roles: ({
+                            role: {
+                                id: string;
+                                name: string;
+                            };
+                        } & {
+                            userId: string;
+                            roleId: string;
+                            grantedBy: string | null;
+                            grantedAt: Date;
+                        })[];
+                    };
+                } & {
                     id: string;
                     createdAt: Date;
-                    action: string;
                     documentType: string;
+                    userId: string;
                     documentId: string;
+                    action: string;
                     ipAddress: string;
                     userAgent: string;
                     deviceFingerprint: string | null;
                     signedAt: Date;
                     certificate: string | null;
-                } | null;
+                }) | null;
             } & {
                 id: string;
+                status: import(".prisma/client").$Enums.StepStatus;
                 createdAt: Date;
                 updatedAt: Date;
-                action: string | null;
-                status: import(".prisma/client").$Enums.StepStatus;
                 stepNumber: number;
                 startedAt: Date | null;
                 completedAt: Date | null;
@@ -176,31 +194,47 @@ export declare class RequisitionsController {
                 assignedUserId: string | null;
                 assignedRoleId: string | null;
                 dueAt: Date | null;
+                action: string | null;
                 comment: string | null;
                 digitalSignatureId: string | null;
             })[];
+            template: {
+                id: string;
+            };
             actions: ({
                 actor: {
+                    id: string;
                     firstName: string;
                     lastName: string;
+                    roles: ({
+                        role: {
+                            id: string;
+                            name: string;
+                        };
+                    } & {
+                        userId: string;
+                        roleId: string;
+                        grantedBy: string | null;
+                        grantedAt: Date;
+                    })[];
                 };
             } & {
                 id: string;
-                action: import(".prisma/client").$Enums.WorkflowAction;
+                actionAt: Date;
                 instanceId: string;
+                action: import(".prisma/client").$Enums.WorkflowAction;
                 comment: string | null;
                 digitalSignatureId: string | null;
-                actionAt: Date;
                 instanceStepId: string | null;
                 actorId: string;
             })[];
         } & {
             id: string;
+            status: import(".prisma/client").$Enums.WorkflowStatus;
             createdAt: Date;
             updatedAt: Date;
-            status: import(".prisma/client").$Enums.WorkflowStatus;
-            templateId: string;
             documentType: string;
+            templateId: string;
             documentId: string;
             currentStepNumber: number;
             startedAt: Date;
@@ -208,120 +242,155 @@ export declare class RequisitionsController {
         }) | null;
         items: {
             id: string;
-            description: string;
+            prId: string;
+            budgetLineId: string | null;
             createdAt: Date;
             updatedAt: Date;
-            budgetLineId: string | null;
-            prId: string;
+            description: string;
+            specification: string | null;
             unit: string;
             quantity: import(".prisma/client/runtime/library").Decimal;
-            specification: string | null;
             estimatedUnitPrice: import(".prisma/client/runtime/library").Decimal;
             totalEstimated: import(".prisma/client/runtime/library").Decimal;
         }[];
-        activity: {
-            name: string;
+        purchaseOrders: {
             id: string;
-            description: string | null;
+            serialNumber: string;
+            currency: string;
+            totalAmount: import(".prisma/client/runtime/library").Decimal;
+            status: import(".prisma/client").$Enums.DocumentStatus;
+            vendor: {
+                id: string;
+                name: string;
+            };
+        }[];
+        rfqs: {
+            id: string;
+            serialNumber: string;
+            status: import(".prisma/client").$Enums.RfqStatus;
+            createdAt: Date;
+            submissionDeadline: Date;
+        }[];
+        procurementMethod: {
+            id: string;
             createdAt: Date;
             updatedAt: Date;
+            name: string;
+            code: string;
+            description: string | null;
+            isActive: boolean;
+            minThreshold: import(".prisma/client/runtime/library").Decimal;
+            maxThreshold: import(".prisma/client/runtime/library").Decimal | null;
+            minVendors: number;
+            requiresCommittee: boolean;
+        } | null;
+        pafForms: {
+            id: string;
+            rfqId: string;
+            totalAmount: import(".prisma/client/runtime/library").Decimal;
+            status: import(".prisma/client").$Enums.DocumentStatus;
+            recommendedVendorId: string | null;
+        }[];
+        activity: {
+            id: string;
             status: import(".prisma/client").$Enums.ActivityStatus;
-            deletedAt: Date | null;
             createdById: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            deletedAt: Date | null;
+            name: string;
             code: string;
             startDate: Date;
             endDate: Date;
+            description: string | null;
             projectId: string;
             plannedBudget: import(".prisma/client/runtime/library").Decimal;
             actualSpent: import(".prisma/client/runtime/library").Decimal;
             progressPercent: import(".prisma/client/runtime/library").Decimal;
             responsibleUserId: string | null;
         } | null;
-        procurementMethod: {
-            name: string;
-            id: string;
-            description: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-            isActive: boolean;
-            code: string;
-            minThreshold: import(".prisma/client/runtime/library").Decimal;
-            maxThreshold: import(".prisma/client/runtime/library").Decimal | null;
-            minVendors: number;
-            requiresCommittee: boolean;
-        } | null;
         requestedBy: {
             id: string;
             email: string;
             firstName: string;
             lastName: string;
+            roles: ({
+                role: {
+                    id: string;
+                    name: string;
+                };
+            } & {
+                userId: string;
+                roleId: string;
+                grantedBy: string | null;
+                grantedAt: Date;
+            })[];
         };
-    } & {
         id: string;
-        description: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        status: import(".prisma/client").$Enums.DocumentStatus;
-        deletedAt: Date | null;
         serialNumber: string;
         grantId: string;
-        currency: string;
-        workflowInstanceId: string | null;
-        appItemId: string | null;
-        activityId: string | null;
         budgetLineId: string | null;
         title: string;
+        currency: string;
+        status: import(".prisma/client").$Enums.DocumentStatus;
+        workflowInstanceId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+        description: string | null;
+        procurementMethodId: string | null;
+        justification: string | null;
+        appItemId: string | null;
+        activityId: string | null;
         requestedById: string;
         departmentId: string | null;
-        procurementMethodId: string | null;
         totalEstimatedAmount: import(".prisma/client/runtime/library").Decimal;
         requiredByDate: Date | null;
-        justification: string | null;
     }>;
     update(id: string, dto: any, user: UserPayload): Promise<{
         id: string;
-        description: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        status: import(".prisma/client").$Enums.DocumentStatus;
-        deletedAt: Date | null;
         serialNumber: string;
         grantId: string;
-        currency: string;
-        workflowInstanceId: string | null;
-        appItemId: string | null;
-        activityId: string | null;
         budgetLineId: string | null;
         title: string;
+        currency: string;
+        status: import(".prisma/client").$Enums.DocumentStatus;
+        workflowInstanceId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+        description: string | null;
+        procurementMethodId: string | null;
+        justification: string | null;
+        appItemId: string | null;
+        activityId: string | null;
         requestedById: string;
         departmentId: string | null;
-        procurementMethodId: string | null;
         totalEstimatedAmount: import(".prisma/client/runtime/library").Decimal;
         requiredByDate: Date | null;
-        justification: string | null;
     }>;
     remove(id: string, user: UserPayload): Promise<void>;
     submit(id: string, user: UserPayload): Promise<{
         id: string;
-        description: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        status: import(".prisma/client").$Enums.DocumentStatus;
-        deletedAt: Date | null;
         serialNumber: string;
         grantId: string;
-        currency: string;
-        workflowInstanceId: string | null;
-        appItemId: string | null;
-        activityId: string | null;
         budgetLineId: string | null;
         title: string;
+        currency: string;
+        status: import(".prisma/client").$Enums.DocumentStatus;
+        workflowInstanceId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+        description: string | null;
+        procurementMethodId: string | null;
+        justification: string | null;
+        appItemId: string | null;
+        activityId: string | null;
         requestedById: string;
         departmentId: string | null;
-        procurementMethodId: string | null;
         totalEstimatedAmount: import(".prisma/client/runtime/library").Decimal;
         requiredByDate: Date | null;
-        justification: string | null;
     }>;
     approve(id: string, body: {
         comment?: string;
@@ -330,10 +399,9 @@ export declare class RequisitionsController {
         workflowInstance: {
             steps: {
                 id: string;
+                status: import(".prisma/client").$Enums.StepStatus;
                 createdAt: Date;
                 updatedAt: Date;
-                action: string | null;
-                status: import(".prisma/client").$Enums.StepStatus;
                 stepNumber: number;
                 startedAt: Date | null;
                 completedAt: Date | null;
@@ -342,21 +410,28 @@ export declare class RequisitionsController {
                 assignedUserId: string | null;
                 assignedRoleId: string | null;
                 dueAt: Date | null;
+                action: string | null;
                 comment: string | null;
                 digitalSignatureId: string | null;
             }[];
         } & {
             id: string;
+            status: import(".prisma/client").$Enums.WorkflowStatus;
             createdAt: Date;
             updatedAt: Date;
-            status: import(".prisma/client").$Enums.WorkflowStatus;
-            templateId: string;
             documentType: string;
+            templateId: string;
             documentId: string;
             currentStepNumber: number;
             startedAt: Date;
             completedAt: Date | null;
         };
+        procurementRoute: import("../../common/constants/procurement.constants").ProcurementRoute | undefined;
+        nextStep: {
+            type: "RFQ" | "PO";
+            rfqId?: string;
+            redirectUrl: string;
+        } | undefined;
     }>;
     reject(id: string, body: {
         comment: string;
@@ -365,10 +440,9 @@ export declare class RequisitionsController {
         workflowInstance: {
             steps: {
                 id: string;
+                status: import(".prisma/client").$Enums.StepStatus;
                 createdAt: Date;
                 updatedAt: Date;
-                action: string | null;
-                status: import(".prisma/client").$Enums.StepStatus;
                 stepNumber: number;
                 startedAt: Date | null;
                 completedAt: Date | null;
@@ -377,21 +451,28 @@ export declare class RequisitionsController {
                 assignedUserId: string | null;
                 assignedRoleId: string | null;
                 dueAt: Date | null;
+                action: string | null;
                 comment: string | null;
                 digitalSignatureId: string | null;
             }[];
         } & {
             id: string;
+            status: import(".prisma/client").$Enums.WorkflowStatus;
             createdAt: Date;
             updatedAt: Date;
-            status: import(".prisma/client").$Enums.WorkflowStatus;
-            templateId: string;
             documentType: string;
+            templateId: string;
             documentId: string;
             currentStepNumber: number;
             startedAt: Date;
             completedAt: Date | null;
         };
+        procurementRoute: import("../../common/constants/procurement.constants").ProcurementRoute | undefined;
+        nextStep: {
+            type: "RFQ" | "PO";
+            rfqId?: string;
+            redirectUrl: string;
+        } | undefined;
     }>;
     return_(id: string, body: {
         comment: string;
@@ -400,10 +481,9 @@ export declare class RequisitionsController {
         workflowInstance: {
             steps: {
                 id: string;
+                status: import(".prisma/client").$Enums.StepStatus;
                 createdAt: Date;
                 updatedAt: Date;
-                action: string | null;
-                status: import(".prisma/client").$Enums.StepStatus;
                 stepNumber: number;
                 startedAt: Date | null;
                 completedAt: Date | null;
@@ -412,46 +492,75 @@ export declare class RequisitionsController {
                 assignedUserId: string | null;
                 assignedRoleId: string | null;
                 dueAt: Date | null;
+                action: string | null;
                 comment: string | null;
                 digitalSignatureId: string | null;
             }[];
         } & {
             id: string;
+            status: import(".prisma/client").$Enums.WorkflowStatus;
             createdAt: Date;
             updatedAt: Date;
-            status: import(".prisma/client").$Enums.WorkflowStatus;
-            templateId: string;
             documentType: string;
+            templateId: string;
             documentId: string;
             currentStepNumber: number;
             startedAt: Date;
             completedAt: Date | null;
         };
+        procurementRoute: import("../../common/constants/procurement.constants").ProcurementRoute | undefined;
+        nextStep: {
+            type: "RFQ" | "PO";
+            rfqId?: string;
+            redirectUrl: string;
+        } | undefined;
     }>;
     getItems(id: string): Promise<{
         id: string;
-        description: string;
+        prId: string;
+        budgetLineId: string | null;
         createdAt: Date;
         updatedAt: Date;
-        budgetLineId: string | null;
-        prId: string;
+        description: string;
+        specification: string | null;
         unit: string;
         quantity: import(".prisma/client/runtime/library").Decimal;
-        specification: string | null;
         estimatedUnitPrice: import(".prisma/client/runtime/library").Decimal;
         totalEstimated: import(".prisma/client/runtime/library").Decimal;
     }[]>;
     addItem(id: string, dto: any): Promise<{
         id: string;
-        description: string;
+        prId: string;
+        budgetLineId: string | null;
         createdAt: Date;
         updatedAt: Date;
-        budgetLineId: string | null;
-        prId: string;
+        description: string;
+        specification: string | null;
         unit: string;
         quantity: import(".prisma/client/runtime/library").Decimal;
-        specification: string | null;
         estimatedUnitPrice: import(".prisma/client/runtime/library").Decimal;
         totalEstimated: import(".prisma/client/runtime/library").Decimal;
     }>;
+    uploadDocuments(id: string, files: Express.Multer.File[], labelsJson: string, user: UserPayload): Promise<any[]>;
+    listDocuments(id: string): Promise<({
+        uploadedBy: {
+            id: string;
+            firstName: string;
+            lastName: string;
+        };
+    } & {
+        id: string;
+        createdAt: Date;
+        deletedAt: Date | null;
+        documentType: string;
+        fileUrl: string;
+        documentId: string;
+        fileName: string;
+        originalName: string;
+        fileSize: number;
+        mimeType: string;
+        storageKey: string;
+        uploadedById: string;
+    })[]>;
+    deleteDocument(id: string, attachmentId: string, user: UserPayload): Promise<void>;
 }

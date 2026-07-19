@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import type { PrApprovalResult } from '@/lib/procurement/post-approval-redirect';
 
 // ── Purchase Requisitions ─────────────────────────────────────────────────────
 
@@ -27,6 +28,21 @@ export async function submitPurchaseRequisition(id: string) {
   return data.data;
 }
 
+export async function approvePurchaseRequisition(id: string, comment?: string): Promise<PrApprovalResult> {
+  const { data } = await apiClient.post(`/procurement/requisitions/${id}/approve`, { comment });
+  return data.data;
+}
+
+export async function rejectPurchaseRequisition(id: string, comment: string) {
+  const { data } = await apiClient.post(`/procurement/requisitions/${id}/reject`, { comment });
+  return data.data;
+}
+
+export async function returnPurchaseRequisition(id: string, comment: string) {
+  const { data } = await apiClient.post(`/procurement/requisitions/${id}/return`, { comment });
+  return data.data;
+}
+
 export async function deletePurchaseRequisition(id: string) {
   await apiClient.delete(`/procurement/requisitions/${id}`);
 }
@@ -50,6 +66,21 @@ export async function createPurchaseOrder(dto: Record<string, unknown>) {
 
 export async function submitPurchaseOrder(id: string) {
   const { data } = await apiClient.post(`/procurement/purchase-orders/${id}/submit`);
+  return data.data;
+}
+
+export async function approvePurchaseOrder(id: string, comment?: string) {
+  const { data } = await apiClient.post(`/procurement/purchase-orders/${id}/approve`, { comment });
+  return data.data;
+}
+
+export async function rejectPurchaseOrder(id: string, comment: string) {
+  const { data } = await apiClient.post(`/procurement/purchase-orders/${id}/reject`, { comment });
+  return data.data;
+}
+
+export async function returnPurchaseOrder(id: string, comment: string) {
+  const { data } = await apiClient.post(`/procurement/purchase-orders/${id}/return`, { comment });
   return data.data;
 }
 
@@ -97,6 +128,57 @@ export async function createRfq(dto: Record<string, unknown>) {
   return data.data;
 }
 
+export async function issueRfq(id: string) {
+  const { data } = await apiClient.post(`/procurement/rfq/${id}/issue`);
+  return data.data;
+}
+
+export async function inviteRfqVendor(id: string, vendorId: string) {
+  const { data } = await apiClient.post(`/procurement/rfq/${id}/vendors`, { vendorId });
+  return data.data;
+}
+
+export async function updateRfqQuotation(
+  id: string,
+  rfqVendorId: string,
+  dto: Record<string, unknown>,
+) {
+  const { data } = await apiClient.patch(`/procurement/rfq/${id}/vendors/${rfqVendorId}`, dto);
+  return data.data;
+}
+
+export async function awardRfqVendor(id: string, rfqVendorId: string) {
+  const { data } = await apiClient.post(`/procurement/rfq/${id}/vendors/${rfqVendorId}/award`);
+  return data.data;
+}
+
+export async function getRfqComparison(id: string) {
+  const { data } = await apiClient.get(`/procurement/rfq/${id}/comparison`);
+  return data.data;
+}
+
+// ── PAF ──────────────────────────────────────────────────────────────────────
+
+export async function getPafs(query: { rfqId?: string; prId?: string } = {}) {
+  const { data } = await apiClient.get('/procurement/paf', { params: query });
+  return data.data;
+}
+
+export async function getPaf(id: string) {
+  const { data } = await apiClient.get(`/procurement/paf/${id}`);
+  return data.data;
+}
+
+export async function createPaf(dto: {
+  rfqId: string;
+  rfqVendorId: string;
+  justification: string;
+  committeeMembers?: { name: string; role: string }[];
+}) {
+  const { data } = await apiClient.post('/procurement/paf', dto);
+  return data.data;
+}
+
 // ── Goods Receipts ───────────────────────────────────────────────────────────
 
 export async function getGoodsReceipts(query = {}) {
@@ -104,8 +186,23 @@ export async function getGoodsReceipts(query = {}) {
   return data.data;
 }
 
+export async function getGoodsReceipt(id: string) {
+  const { data } = await apiClient.get(`/procurement/goods-receipts/${id}`);
+  return data.data;
+}
+
 export async function createGoodsReceipt(dto: Record<string, unknown>) {
   const { data } = await apiClient.post('/procurement/goods-receipts', dto);
+  return data.data;
+}
+
+export async function submitGoodsReceipt(id: string) {
+  const { data } = await apiClient.post(`/procurement/goods-receipts/${id}/submit`);
+  return data.data;
+}
+
+export async function approveGoodsReceipt(id: string, comment?: string) {
+  const { data } = await apiClient.post(`/procurement/goods-receipts/${id}/approve`, { comment });
   return data.data;
 }
 

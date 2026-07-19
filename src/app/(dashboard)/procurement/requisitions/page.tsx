@@ -31,6 +31,7 @@ interface PR {
   currency: string;
   status: string;
   createdAt: string;
+  waitingForRoleName?: string | null;
   requester?: { firstName: string; lastName: string };
 }
 
@@ -74,6 +75,11 @@ const columns: ColumnDef<PR>[] = [
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => <StatusBadge status={row.original.status.toLowerCase()} />,
+  },
+  {
+    accessorKey: "waitingForRoleName",
+    header: "Waiting For",
+    cell: ({ row }) => row.original.waitingForRoleName ?? "—",
   },
 ];
 

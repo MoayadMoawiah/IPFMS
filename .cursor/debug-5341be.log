@@ -1,0 +1,6 @@
+{"sessionId":"5341be","location":"auth.ts:apiLogin:entry","message":"apiLogin called","data":{"emailDomain":"gaderon.org"},"timestamp":1784017298918,"hypothesisId":"H1"}
+{"sessionId":"5341be","location":"client.ts:request-interceptor","message":"login request outgoing","data":{"baseURL":"http://localhost:3001/api","url":"/auth/login","fullUrl":"http://localhost:3001/api/auth/login","withCredentials":true,"method":"post"},"timestamp":1784017298941,"hypothesisId":"H1-H2"}
+{"sessionId":"5341be","location":"auth.ts:apiLogin:success","message":"login succeeded","data":{"hasAccessToken":true},"timestamp":1784017299609,"hypothesisId":"H1"}
+{"sessionId":"5341be","location":"auth.ts:apiLogin:entry","message":"apiLogin called","data":{"emailDomain":"gaderon.org"},"timestamp":1784017321294,"hypothesisId":"H1"}
+{"sessionId":"5341be","location":"client.ts:request-interceptor","message":"login request outgoing","data":{"baseURL":"http://localhost:3001/api","url":"/auth/login","fullUrl":"http://localhost:3001/api/auth/login","withCredentials":true,"method":"post"},"timestamp":1784017321316,"hypothesisId":"H1-H2"}
+{"sessionId":"5341be","location":"auth.ts:apiLogin:success","message":"login succeeded","data":{"hasAccessToken":true},"timestamp":1784017322003,"hypothesisId":"H1"}

@@ -14,11 +14,19 @@ exports.MinioService = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const Minio = require("minio");
+const fs = require("fs");
+const path = require("path");
 let MinioService = MinioService_1 = class MinioService {
     constructor(config) {
         this.config = config;
         this.logger = new common_1.Logger(MinioService_1.name);
+        this.useLocalStorage = false;
         this.bucket = this.config.get('MINIO_BUCKET', 'gpfms-documents');
+        this.localRoot = path.resolve(this.config.get('LOCAL_STORAGE_PATH', path.join(process.cwd(), 'storage')));
+        const forcedLocal = this.config.get('STORAGE_DRIVER', '').toLowerCase() === 'local';
+        if (forcedLocal) {
+            this.useLocalStorage = true;
+        }
         this.client = new Minio.Client({
             endPoint: this.config.get('MINIO_ENDPOINT', 'localhost'),
             port: parseInt(this.config.get('MINIO_PORT', '9000'), 10),
@@ -29,7 +37,36 @@ let MinioService = MinioService_1 = class MinioService {
         });
     }
     async onModuleInit() {
+        if (this.useLocalStorage) {
+            this.ensureLocalRoot();
+            this.logger.warn(`Using local filesystem storage at ${this.localRoot}`);
+            return;
+        }
         await this.ensureBucketExists(this.bucket);
+    }
+    isLocalStorage() {
+        return this.useLocalStorage;
+    }
+    getLocalFilePath(storageKey) {
+        const normalized = storageKey.replace(/\\/g, '/').replace(/^\/+/, '');
+        if (!normalized || normalized.includes('..')) {
+            throw new Error('Invalid storage key');
+        }
+        const fullPath = path.resolve(this.localRoot, normalized);
+        if (!fullPath.startsWith(this.localRoot)) {
+            throw new Error('Invalid storage key');
+        }
+        return fullPath;
+    }
+    ensureLocalRoot() {
+        fs.mkdirSync(this.localRoot, { recursive: true });
+    }
+    enableLocalFallback(reason) {
+        if (this.useLocalStorage)
+            return;
+        this.useLocalStorage = true;
+        this.ensureLocalRoot();
+        this.logger.warn(`MinIO unavailable (${reason}); falling back to local storage at ${this.localRoot}`);
     }
     async ensureBucketExists(bucket) {
         try {
@@ -41,16 +78,49 @@ let MinioService = MinioService_1 = class MinioService {
         }
         catch (err) {
             this.logger.warn(`MinIO bucket check failed (${bucket}): ${err.message}`);
+            this.enableLocalFallback(err.message || 'connection failed');
         }
     }
-    async uploadFile(buffer, storageKey, mimeType, bucket) {
-        const targetBucket = bucket ?? this.bucket;
-        await this.client.putObject(targetBucket, storageKey, buffer, buffer.length, {
-            'Content-Type': mimeType,
-        });
+    async writeLocalFile(buffer, storageKey) {
+        this.ensureLocalRoot();
+        const fullPath = this.getLocalFilePath(storageKey);
+        fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+        await fs.promises.writeFile(fullPath, buffer);
         return storageKey;
     }
+    async uploadFile(buffer, storageKey, mimeType, bucket) {
+        if (this.useLocalStorage) {
+            return this.writeLocalFile(buffer, storageKey);
+        }
+        const targetBucket = bucket ?? this.bucket;
+        try {
+            await this.client.putObject(targetBucket, storageKey, buffer, buffer.length, {
+                'Content-Type': mimeType,
+            });
+            return storageKey;
+        }
+        catch (err) {
+            const code = err?.code ?? err?.name ?? '';
+            const message = err?.message ?? String(err);
+            if (code === 'ECONNREFUSED' || message.includes('ECONNREFUSED')) {
+                this.enableLocalFallback('ECONNREFUSED');
+                return this.writeLocalFile(buffer, storageKey);
+            }
+            throw err;
+        }
+    }
     async deleteFile(storageKey, bucket) {
+        if (this.useLocalStorage) {
+            try {
+                await fs.promises.unlink(this.getLocalFilePath(storageKey));
+            }
+            catch (err) {
+                if (err?.code !== 'ENOENT') {
+                    this.logger.warn(`Failed to delete local object ${storageKey}: ${err.message}`);
+                }
+            }
+            return;
+        }
         const targetBucket = bucket ?? this.bucket;
         try {
             await this.client.removeObject(targetBucket, storageKey);
@@ -60,10 +130,20 @@ let MinioService = MinioService_1 = class MinioService {
         }
     }
     async getSignedUrl(storageKey, expirySeconds = 3600, bucket) {
+        if (this.useLocalStorage) {
+            return this.buildPublicUrl(storageKey);
+        }
         const targetBucket = bucket ?? this.bucket;
         return this.client.presignedGetObject(targetBucket, storageKey, expirySeconds);
     }
     buildPublicUrl(storageKey, bucket) {
+        if (this.useLocalStorage) {
+            const apiBase = this.config.get('API_PUBLIC_URL', 'http://localhost:3001/api');
+            return `${apiBase.replace(/\/$/, '')}/uploads/files/${storageKey
+                .split('/')
+                .map(encodeURIComponent)
+                .join('/')}`;
+        }
         const targetBucket = bucket ?? this.bucket;
         const endpoint = this.config.get('MINIO_ENDPOINT', 'localhost');
         const port = this.config.get('MINIO_PORT', 9000);

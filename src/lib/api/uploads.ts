@@ -94,3 +94,73 @@ export async function deleteActivityDocument(
 ): Promise<void> {
   await apiClient.delete(`/projects/activities/${activityId}/documents/${attachmentId}`);
 }
+
+export async function uploadRequisitionDocuments(
+  requisitionId: string,
+  files: File[],
+  labels: string[],
+): Promise<DocumentAttachment[]> {
+  const form = new FormData();
+  files.forEach((f) => form.append('files', f));
+  form.append('labels', JSON.stringify(labels));
+
+  const { data } = await apiClient.post<{ data: DocumentAttachment[] }>(
+    `/procurement/requisitions/${requisitionId}/documents`,
+    form,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  );
+  return data.data;
+}
+
+export async function getRequisitionDocuments(
+  requisitionId: string,
+): Promise<DocumentAttachment[]> {
+  const { data } = await apiClient.get<{ data: DocumentAttachment[] }>(
+    `/procurement/requisitions/${requisitionId}/documents`,
+  );
+  return data.data;
+}
+
+export async function deleteRequisitionDocument(
+  requisitionId: string,
+  attachmentId: string,
+): Promise<void> {
+  await apiClient.delete(
+    `/procurement/requisitions/${requisitionId}/documents/${attachmentId}`,
+  );
+}
+
+export async function uploadPurchaseOrderDocuments(
+  purchaseOrderId: string,
+  files: File[],
+  labels: string[],
+): Promise<DocumentAttachment[]> {
+  const form = new FormData();
+  files.forEach((f) => form.append("files", f));
+  form.append("labels", JSON.stringify(labels));
+
+  const { data } = await apiClient.post<{ data: DocumentAttachment[] }>(
+    `/procurement/purchase-orders/${purchaseOrderId}/documents`,
+    form,
+    { headers: { "Content-Type": "multipart/form-data" } },
+  );
+  return data.data;
+}
+
+export async function getPurchaseOrderDocuments(
+  purchaseOrderId: string,
+): Promise<DocumentAttachment[]> {
+  const { data } = await apiClient.get<{ data: DocumentAttachment[] }>(
+    `/procurement/purchase-orders/${purchaseOrderId}/documents`,
+  );
+  return data.data;
+}
+
+export async function deletePurchaseOrderDocument(
+  purchaseOrderId: string,
+  attachmentId: string,
+): Promise<void> {
+  await apiClient.delete(
+    `/procurement/purchase-orders/${purchaseOrderId}/documents/${attachmentId}`,
+  );
+}

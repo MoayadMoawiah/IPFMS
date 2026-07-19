@@ -223,10 +223,10 @@ export async function seedLookupData() {
       name: 'Purchase Requisition Approval',
       documentType: 'PURCHASE_REQUISITION',
       steps: [
-        { stepNumber: 1, name: 'Department Head Review', slaHours: 48, escalationHours: 72, allowReturn: true, allowReject: false },
-        { stepNumber: 2, name: 'Procurement Officer Review', slaHours: 24, escalationHours: 48, allowReturn: true, allowReject: false },
-        { stepNumber: 3, name: 'Finance Officer Budget Confirmation', slaHours: 24, escalationHours: 48, allowReturn: true, allowReject: true },
-        { stepNumber: 4, name: 'Country Director Final Approval', slaHours: 48, escalationHours: 72, allowReturn: true, allowReject: true },
+        { stepNumber: 1, name: 'Department Head Review', approverRoleId: 'role-department-head', slaHours: 48, escalationHours: 72, allowReturn: true, allowReject: false },
+        { stepNumber: 2, name: 'Procurement Officer Review', approverRoleId: 'role-procurement-officer', slaHours: 24, escalationHours: 48, allowReturn: true, allowReject: false },
+        { stepNumber: 3, name: 'Finance Officer Budget Confirmation', approverRoleId: 'role-finance-officer', slaHours: 24, escalationHours: 48, allowReturn: true, allowReject: true },
+        { stepNumber: 4, name: 'Country Director Final Approval', approverRoleId: 'role-country-director', slaHours: 48, escalationHours: 72, allowReturn: true, allowReject: true },
       ],
     },
     {
@@ -234,9 +234,9 @@ export async function seedLookupData() {
       name: 'Purchase Order Approval',
       documentType: 'PURCHASE_ORDER',
       steps: [
-        { stepNumber: 1, name: 'Procurement Manager Review', slaHours: 24, escalationHours: 48, allowReturn: true, allowReject: false },
-        { stepNumber: 2, name: 'Finance Manager Financial Approval', slaHours: 24, escalationHours: 48, allowReturn: true, allowReject: true },
-        { stepNumber: 3, name: 'Country Director Sign-off', slaHours: 48, escalationHours: 72, allowReturn: true, allowReject: true },
+        { stepNumber: 1, name: 'Procurement Manager Review', approverRoleId: 'role-procurement-manager', slaHours: 24, escalationHours: 48, allowReturn: true, allowReject: false },
+        { stepNumber: 2, name: 'Finance Manager Financial Approval', approverRoleId: 'role-finance-manager', slaHours: 24, escalationHours: 48, allowReturn: true, allowReject: true },
+        { stepNumber: 3, name: 'Country Director Sign-off', approverRoleId: 'role-country-director', slaHours: 48, escalationHours: 72, allowReturn: true, allowReject: true },
       ],
     },
     {
@@ -244,9 +244,9 @@ export async function seedLookupData() {
       name: 'Payment Voucher Approval',
       documentType: 'PAYMENT_VOUCHER',
       steps: [
-        { stepNumber: 1, name: 'Finance Manager Review', slaHours: 24, escalationHours: 48, allowReturn: true, allowReject: true },
-        { stepNumber: 2, name: 'Internal Auditor Compliance Check', slaHours: 24, escalationHours: 48, allowReturn: true, allowReject: true },
-        { stepNumber: 3, name: 'Country Director Authorize Payment', slaHours: 48, escalationHours: 72, allowReturn: true, allowReject: true },
+        { stepNumber: 1, name: 'Finance Manager Review', approverRoleId: 'role-finance-manager', slaHours: 24, escalationHours: 48, allowReturn: true, allowReject: true },
+        { stepNumber: 2, name: 'Internal Auditor Compliance Check', approverRoleId: 'role-auditor', slaHours: 24, escalationHours: 48, allowReturn: true, allowReject: true },
+        { stepNumber: 3, name: 'Country Director Authorize Payment', approverRoleId: 'role-country-director', slaHours: 48, escalationHours: 72, allowReturn: true, allowReject: true },
       ],
     },
     {
@@ -254,8 +254,8 @@ export async function seedLookupData() {
       name: 'Goods Receipt Approval',
       documentType: 'GOODS_RECEIPT',
       steps: [
-        { stepNumber: 1, name: 'Requesting Department Inspection', slaHours: 24, escalationHours: 48, allowReturn: false, allowReject: true },
-        { stepNumber: 2, name: 'Procurement Officer Finalization', slaHours: 24, escalationHours: 24, allowReturn: false, allowReject: true },
+        { stepNumber: 1, name: 'Requesting Department Inspection', approverRoleId: 'role-department-head', slaHours: 24, escalationHours: 48, allowReturn: false, allowReject: true },
+        { stepNumber: 2, name: 'Procurement Officer Finalization', approverRoleId: 'role-procurement-officer', slaHours: 24, escalationHours: 24, allowReturn: false, allowReject: true },
       ],
     },
   ];
@@ -264,20 +264,45 @@ export async function seedLookupData() {
     const { steps, ...templateData } = template;
     await prisma.workflowTemplate.upsert({
       where: { id: template.id },
-      update: {},
+      update: {
+        name: templateData.name,
+        documentType: templateData.documentType,
+        isActive: true,
+      },
       create: {
         ...templateData,
         isActive: true,
-        steps: {
-          create: steps.map((step) => ({
-            ...step,
-            isParallel: false,
-            isMandatory: true,
-            allowDelegate: true,
-          })),
-        },
       },
     });
+
+    for (const step of steps) {
+      await prisma.workflowStep.upsert({
+        where: {
+          templateId_stepNumber: {
+            templateId: template.id,
+            stepNumber: step.stepNumber,
+          },
+        },
+        update: {
+          name: step.name,
+          approverRoleId: step.approverRoleId,
+          slaHours: step.slaHours,
+          escalationHours: step.escalationHours,
+          allowReturn: step.allowReturn,
+          allowReject: step.allowReject,
+          isParallel: false,
+          isMandatory: true,
+          allowDelegate: true,
+        },
+        create: {
+          templateId: template.id,
+          ...step,
+          isParallel: false,
+          isMandatory: true,
+          allowDelegate: true,
+        },
+      });
+    }
   }
   console.log(`  ✓ ${workflowTemplates.length} workflow templates`);
 

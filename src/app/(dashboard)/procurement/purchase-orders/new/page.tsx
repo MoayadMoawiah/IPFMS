@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useMemo, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,11 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { PageHeader } from "@/components/layout/page-header";
 import {
@@ -24,9 +20,16 @@ import {
   FormField,
   FormSection,
 } from "@/components/forms/form-layout";
-import { useGrants } from "@/hooks/use-grants";
+import { LoadingSkeleton } from "@/components/shared/loading-skeleton";
+import { useGrants, useGrant } from "@/hooks/use-grants";
 import { getPaginatedItems } from "@/lib/api/pagination";
-import { useCreatePurchaseOrder, useVendors } from "@/hooks/use-procurement";
+import {
+  useCreatePurchaseOrder,
+  useVendors,
+  useVendor,
+  usePurchaseRequisition,
+  useRfq,
+} from "@/hooks/use-procurement";
 import { extractApiError } from "@/lib/api-errors";
 import type { Grant } from "@/lib/api/grants";
 
@@ -61,16 +64,145 @@ type FormValues = z.infer<typeof schema>;
 
 const defaultItem = { description: "", unit: "Unit", orderedQuantity: "", unitPrice: "" };
 
-export default function NewPurchaseOrderPage() {
+type PrLike = {
+  id?: string;
+  title: string;
+  currency?: string;
+  grantId?: string;
+  grant?: { id: string; code?: string; name?: string; currency?: string };
+  serialNumber?: string;
+  items?: Array<{
+    description: string;
+    unit: string;
+    quantity: number | string;
+    estimatedUnitPrice: number | string;
+  }>;
+};
+
+type RfqLike = {
+  id: string;
+  serialNumber?: string;
+  title?: string;
+  prId?: string;
+  grantId?: string;
+  currency?: string;
+  grant?: { id: string; code?: string; name?: string; currency?: string };
+  pr?: PrLike | null;
+  vendors?: Array<{
+    vendorId: string;
+    isWinner?: boolean;
+    quotedAmount?: number | string | null;
+    currency?: string | null;
+    vendor?: { id: string; name: string };
+  }>;
+};
+
+function mapPrItemsToPoItems(
+  prItems: NonNullable<PrLike["items"]>,
+  totalQuoted: number | null,
+) {
+  if (prItems.length === 0) return [{ ...defaultItem }];
+
+  return prItems.map((item) => {
+    let unitPrice = Number(item.estimatedUnitPrice);
+    if (totalQuoted != null && totalQuoted > 0 && prItems.length === 1) {
+      unitPrice = totalQuoted / Number(item.quantity);
+    } else if (totalQuoted != null && totalQuoted > 0 && prItems.length > 1) {
+      const prTotal = prItems.reduce(
+        (s, i) => s + Number(i.quantity) * Number(i.estimatedUnitPrice),
+        0,
+      );
+      if (prTotal > 0) {
+        const ratio =
+          (Number(item.quantity) * Number(item.estimatedUnitPrice)) / prTotal;
+        unitPrice = (totalQuoted * ratio) / Number(item.quantity);
+      }
+    }
+    return {
+      description: item.description,
+      unit: item.unit,
+      orderedQuantity: String(item.quantity),
+      unitPrice: unitPrice.toFixed(2),
+    };
+  });
+}
+
+function NewPurchaseOrderForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const prIdParam = searchParams.get("prId") ?? "";
+  const rfqId = searchParams.get("rfqId") ?? "";
+  const vendorIdParam = searchParams.get("vendorId") ?? "";
+  const pafId = searchParams.get("pafId") ?? "";
+  const fromSource = Boolean(prIdParam || rfqId);
+
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [prefilled, setPrefilled] = useState(false);
 
   const { data: grantsData, isLoading: loadingGrants } = useGrants({ limit: 100 });
-  const grants: Grant[] = getPaginatedItems(grantsData);
+  const grantsFromList: Grant[] = getPaginatedItems(grantsData);
 
   const { data: vendorsData, isLoading: loadingVendors } = useVendors({ limit: 100 });
-  const vendors: { id: string; name: string; registrationNumber?: string }[] =
+  const vendorsFromList: { id: string; name: string; registrationNumber?: string }[] =
     getPaginatedItems(vendorsData);
+
+  const { data: prData, isLoading: loadingPr } = usePurchaseRequisition(prIdParam);
+  const { data: rfqData, isLoading: loadingRfq } = useRfq(rfqId);
+
+  const rfq = rfqData as RfqLike | undefined;
+  const prFromApi = prData as PrLike | undefined;
+  const pr = prFromApi ?? rfq?.pr ?? undefined;
+  const resolvedPrId = prIdParam || pr?.id || rfq?.prId || "";
+
+  const winner =
+    rfq?.vendors?.find((v) => v.isWinner) ??
+    (vendorIdParam
+      ? rfq?.vendors?.find((v) => v.vendorId === vendorIdParam)
+      : undefined);
+
+  const resolvedGrantId =
+    pr?.grantId ?? pr?.grant?.id ?? rfq?.grantId ?? rfq?.grant?.id ?? "";
+  const resolvedVendorId = vendorIdParam || winner?.vendorId || "";
+
+  const { data: grantDetail } = useGrant(resolvedGrantId);
+  const { data: vendorDetail } = useVendor(resolvedVendorId);
+
+  const grants = useMemo(() => {
+    const list = [...grantsFromList];
+    const ensureGrant = (g?: { id: string; code?: string; name?: string; currency?: string } | null) => {
+      if (!g?.id || list.some((x) => x.id === g.id)) return;
+      list.unshift({
+        id: g.id,
+        code: g.code ?? "—",
+        name: g.name ?? "Grant",
+        currency: g.currency ?? "USD",
+      } as Grant);
+    };
+    ensureGrant(grantDetail as Grant | undefined);
+    ensureGrant(pr?.grant);
+    ensureGrant(rfq?.grant);
+    return list;
+  }, [grantsFromList, grantDetail, pr?.grant, rfq?.grant]);
+
+  const vendors = useMemo(() => {
+    const list = [...vendorsFromList];
+    const ensureVendor = (v?: { id: string; name: string } | null) => {
+      if (!v?.id || list.some((x) => x.id === v.id)) return;
+      list.unshift(v);
+    };
+    if (vendorDetail && typeof vendorDetail === "object" && "id" in vendorDetail) {
+      ensureVendor(vendorDetail as { id: string; name: string });
+    }
+    if (winner?.vendor) {
+      ensureVendor({ id: winner.vendor.id, name: winner.vendor.name });
+    } else if (winner?.vendorId) {
+      ensureVendor({ id: winner.vendorId, name: "Awarded vendor" });
+    }
+    if (resolvedVendorId && !list.some((v) => v.id === resolvedVendorId)) {
+      ensureVendor({ id: resolvedVendorId, name: "Selected vendor" });
+    }
+    return list;
+  }, [vendorsFromList, vendorDetail, winner, resolvedVendorId]);
 
   const createPO = useCreatePurchaseOrder();
 
@@ -80,6 +212,7 @@ export default function NewPurchaseOrderPage() {
     setValue,
     watch,
     control,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -98,7 +231,73 @@ export default function NewPurchaseOrderPage() {
 
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
   const items = watch("items");
-  const selectedGrant = grants.find((g) => g.id === watch("grantId"));
+  const grantIdValue = watch("grantId");
+  const vendorIdValue = watch("vendorId");
+  const selectedGrant = grants.find((g) => g.id === grantIdValue);
+
+  const sourceReady =
+    !fromSource ||
+    ((!prIdParam || !loadingPr) &&
+      (!rfqId || !loadingRfq) &&
+      Boolean(pr || rfq));
+
+  const listsReady = !loadingGrants && !loadingVendors;
+
+  useEffect(() => {
+    if (prefilled || !fromSource || !sourceReady || !listsReady) return;
+    if (!pr && !rfq) return;
+
+    const totalQuoted =
+      winner?.quotedAmount != null ? Number(winner.quotedAmount) : null;
+    const prItems = pr?.items ?? [];
+    const mappedItems = mapPrItemsToPoItems(prItems, totalQuoted);
+
+    const title =
+      pr?.title ||
+      rfq?.title ||
+      (rfq?.serialNumber ? `PO for ${rfq.serialNumber}` : "Purchase Order");
+
+    const grantId = resolvedGrantId;
+    const vendorId = resolvedVendorId;
+    const currency =
+      winner?.currency ||
+      pr?.currency ||
+      rfq?.grant?.currency ||
+      pr?.grant?.currency ||
+      "USD";
+
+    const noteParts: string[] = [];
+    if (rfq?.serialNumber) noteParts.push(`Created from RFQ ${rfq.serialNumber}`);
+    else if (rfqId) noteParts.push(`Created from RFQ ${rfqId}`);
+    if (pr?.serialNumber) noteParts.push(`PR ${pr.serialNumber}`);
+    else if (resolvedPrId) noteParts.push(`PR ${resolvedPrId}`);
+
+    reset({
+      title,
+      grantId,
+      vendorId,
+      currency,
+      deliveryAddress: "",
+      deliveryDate: "",
+      terms: "",
+      notes: noteParts.join(" · "),
+      items: mappedItems,
+    });
+    setPrefilled(true);
+  }, [
+    prefilled,
+    fromSource,
+    sourceReady,
+    listsReady,
+    pr,
+    rfq,
+    rfqId,
+    resolvedPrId,
+    resolvedGrantId,
+    resolvedVendorId,
+    winner,
+    reset,
+  ]);
 
   const subtotal = items.reduce((sum, item) => {
     const qty = Number(item.orderedQuantity) || 0;
@@ -120,6 +319,9 @@ export default function NewPurchaseOrderPage() {
         deliveryDate: values.deliveryDate || undefined,
         terms: values.terms || undefined,
         notes: values.notes || undefined,
+        ...(resolvedPrId && { prId: resolvedPrId }),
+        ...(rfqId && { rfqId }),
+        ...(pafId && { pafId }),
         items: values.items.map((item) => ({
           description: item.description,
           unit: item.unit,
@@ -130,15 +332,29 @@ export default function NewPurchaseOrderPage() {
       {
         onSuccess: (po) => router.push(`/procurement/purchase-orders/${po.id}`),
         onError: (err) => setSubmitError(extractApiError(err, "Failed to create purchase order")),
-      }
+      },
     );
   };
+
+  if (fromSource && (!sourceReady || (sourceReady && !listsReady && !prefilled))) {
+    return <LoadingSkeleton variant="cards" />;
+  }
+
+  const grantSelectReady = !loadingGrants && (!grantIdValue || grants.some((g) => g.id === grantIdValue));
+  const vendorSelectReady =
+    !loadingVendors && (!vendorIdValue || vendors.some((v) => v.id === vendorIdValue));
 
   return (
     <div>
       <PageHeader
         title="New Purchase Order"
-        description="Create a purchase order for a vendor"
+        description={
+          fromSource
+            ? rfqId
+              ? "Create PO from awarded RFQ"
+              : "Create PO directly from purchase requisition"
+            : "Create a purchase order for a vendor"
+        }
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Purchase Orders", href: "/procurement/purchase-orders" },
@@ -146,9 +362,17 @@ export default function NewPurchaseOrderPage() {
         ]}
         actions={
           <Button variant="outline" asChild>
-            <Link href="/procurement/purchase-orders">
+            <Link
+              href={
+                resolvedPrId
+                  ? `/procurement/requisitions/${resolvedPrId}`
+                  : rfqId
+                    ? `/procurement/rfq/${rfqId}`
+                    : "/procurement/purchase-orders"
+              }
+            >
               <ArrowLeft className="h-4 w-4" />
-              Back to Purchase Orders
+              Back
             </Link>
           </Button>
         }
@@ -170,10 +394,14 @@ export default function NewPurchaseOrderPage() {
 
           <FormField label="Grant" htmlFor="grantId" required error={errors.grantId?.message}>
             <Select
-              value={watch("grantId")}
+              key={grantSelectReady ? `grant-${grantIdValue || "empty"}` : "grant-loading"}
+              value={grantIdValue || undefined}
               onValueChange={(v) => setValue("grantId", v, { shouldValidate: true })}
             >
-              <SelectTrigger id="grantId" disabled={loadingGrants}>
+              <SelectTrigger
+                id="grantId"
+                disabled={loadingGrants || Boolean(fromSource && prefilled && grantIdValue)}
+              >
                 <SelectValue placeholder={loadingGrants ? "Loading grants…" : "Select grant"} />
               </SelectTrigger>
               <SelectContent>
@@ -188,10 +416,14 @@ export default function NewPurchaseOrderPage() {
 
           <FormField label="Vendor" htmlFor="vendorId" required error={errors.vendorId?.message}>
             <Select
-              value={watch("vendorId")}
+              key={vendorSelectReady ? `vendor-${vendorIdValue || "empty"}` : "vendor-loading"}
+              value={vendorIdValue || undefined}
               onValueChange={(v) => setValue("vendorId", v, { shouldValidate: true })}
             >
-              <SelectTrigger id="vendorId" disabled={loadingVendors}>
+              <SelectTrigger
+                id="vendorId"
+                disabled={loadingVendors || Boolean(fromSource && prefilled && vendorIdValue)}
+              >
                 <SelectValue placeholder={loadingVendors ? "Loading vendors…" : "Select vendor"} />
               </SelectTrigger>
               <SelectContent>
@@ -206,7 +438,7 @@ export default function NewPurchaseOrderPage() {
 
           <FormField label="Currency" htmlFor="currency" required error={errors.currency?.message}>
             <Select
-              value={watch("currency")}
+              value={watch("currency") || undefined}
               onValueChange={(v) => setValue("currency", v, { shouldValidate: true })}
             >
               <SelectTrigger id="currency">
@@ -327,5 +559,13 @@ export default function NewPurchaseOrderPage() {
         />
       </form>
     </div>
+  );
+}
+
+export default function NewPurchaseOrderPage() {
+  return (
+    <Suspense fallback={<LoadingSkeleton variant="cards" />}>
+      <NewPurchaseOrderForm />
+    </Suspense>
   );
 }

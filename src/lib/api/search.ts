@@ -48,8 +48,8 @@ export async function getWorkflowPendingTasks(query = {}) {
   return data.data;
 }
 
-export async function processWorkflowAction(instanceId: string, stepId: string, action: string, dto: Record<string, unknown>) {
-  const { data } = await apiClient.post(`/workflow/instances/${instanceId}/steps/${stepId}/action`, {
+export async function processWorkflowAction(instanceId: string, action: string, dto: Record<string, unknown> = {}) {
+  const { data } = await apiClient.post(`/workflow/instances/${instanceId}/action`, {
     action,
     ...dto,
   });

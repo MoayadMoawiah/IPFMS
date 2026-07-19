@@ -16,14 +16,14 @@ export declare class InventoryService {
             } | null;
         } & {
             id: string;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date | null;
             name: string;
             description: string | null;
-            unit: string;
+            createdAt: Date;
+            updatedAt: Date;
+            isActive: boolean;
+            deletedAt: Date | null;
             warehouseId: string | null;
+            unit: string;
             totalValue: Prisma.Decimal;
             categoryId: string | null;
             sku: string;
@@ -44,22 +44,22 @@ export declare class InventoryService {
     findOneItem(id: string): Promise<{
         warehouse: {
             id: string;
-            isActive: boolean;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
+            isActive: boolean;
             deletedAt: Date | null;
-            name: string;
             code: string;
-            address: string | null;
             notes: string | null;
+            address: string | null;
             managerId: string | null;
         } | null;
         category: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             description: string | null;
+            createdAt: Date;
+            updatedAt: Date;
             parentId: string | null;
             code: string;
         } | null;
@@ -76,14 +76,14 @@ export declare class InventoryService {
         }[];
     } & {
         id: string;
-        isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
         name: string;
         description: string | null;
-        unit: string;
+        createdAt: Date;
+        updatedAt: Date;
+        isActive: boolean;
+        deletedAt: Date | null;
         warehouseId: string | null;
+        unit: string;
         totalValue: Prisma.Decimal;
         categoryId: string | null;
         sku: string;
@@ -96,14 +96,14 @@ export declare class InventoryService {
     }>;
     createItem(dto: any): Promise<{
         id: string;
-        isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
         name: string;
         description: string | null;
-        unit: string;
+        createdAt: Date;
+        updatedAt: Date;
+        isActive: boolean;
+        deletedAt: Date | null;
         warehouseId: string | null;
+        unit: string;
         totalValue: Prisma.Decimal;
         categoryId: string | null;
         sku: string;
@@ -123,11 +123,11 @@ export declare class InventoryService {
             id: string;
             createdAt: Date;
             createdById: string | null;
-            notes: string | null;
             grantId: string | null;
-            quantity: Prisma.Decimal;
+            notes: string | null;
             warehouseId: string;
             reference: string | null;
+            quantity: Prisma.Decimal;
             unitCost: Prisma.Decimal;
             itemId: string;
             movementType: import(".prisma/client").$Enums.MovementType;
@@ -146,22 +146,22 @@ export declare class InventoryService {
     issue(itemId: string, dto: any, userId: string): Promise<{
         warehouse: {
             id: string;
-            isActive: boolean;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
+            isActive: boolean;
             deletedAt: Date | null;
-            name: string;
             code: string;
-            address: string | null;
             notes: string | null;
+            address: string | null;
             managerId: string | null;
         } | null;
         category: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             description: string | null;
+            createdAt: Date;
+            updatedAt: Date;
             parentId: string | null;
             code: string;
         } | null;
@@ -178,14 +178,14 @@ export declare class InventoryService {
         }[];
     } & {
         id: string;
-        isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
         name: string;
         description: string | null;
-        unit: string;
+        createdAt: Date;
+        updatedAt: Date;
+        isActive: boolean;
+        deletedAt: Date | null;
         warehouseId: string | null;
+        unit: string;
         totalValue: Prisma.Decimal;
         categoryId: string | null;
         sku: string;
@@ -202,14 +202,14 @@ export declare class InventoryService {
         } | null;
     } & {
         id: string;
-        isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
         name: string;
         description: string | null;
-        unit: string;
+        createdAt: Date;
+        updatedAt: Date;
+        isActive: boolean;
+        deletedAt: Date | null;
         warehouseId: string | null;
+        unit: string;
         totalValue: Prisma.Decimal;
         categoryId: string | null;
         sku: string;
@@ -226,26 +226,26 @@ export declare class InventoryService {
         };
     } & {
         id: string;
-        isActive: boolean;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         deletedAt: Date | null;
-        name: string;
         code: string;
-        address: string | null;
         notes: string | null;
+        address: string | null;
         managerId: string | null;
     })[]>;
     createWarehouse(dto: any): Promise<{
         id: string;
-        isActive: boolean;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         deletedAt: Date | null;
-        name: string;
         code: string;
-        address: string | null;
         notes: string | null;
+        address: string | null;
         managerId: string | null;
     }>;
     getWarehouseStock(warehouseId: string): Promise<({
@@ -254,14 +254,14 @@ export declare class InventoryService {
         } | null;
     } & {
         id: string;
-        isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
         name: string;
         description: string | null;
-        unit: string;
+        createdAt: Date;
+        updatedAt: Date;
+        isActive: boolean;
+        deletedAt: Date | null;
         warehouseId: string | null;
+        unit: string;
         totalValue: Prisma.Decimal;
         categoryId: string | null;
         sku: string;

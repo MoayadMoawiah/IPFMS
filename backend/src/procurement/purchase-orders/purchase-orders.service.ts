@@ -4,9 +4,28 @@ import { WorkflowService } from '../../workflow/workflow.service';
 import { SerialService } from '../../serial/serial.service';
 import { AuditService } from '../../audit/audit.service';
 import { GrantsService } from '../../grants/grants.service';
+import { MinioService } from '../../uploads/minio.service';
 import { DocumentStatus, Prisma } from '@prisma/client';
 import { UserPayload } from '../../common/decorators/current-user.decorator';
 import { buildPaginationResponse, parsePagination } from '../../common/dto/pagination.dto';
+
+const ALLOWED_MIME_TYPES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'image/jpeg',
+  'image/png',
+]);
+
+const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
+
+const PO_DOC_EDITABLE_STATUSES: DocumentStatus[] = [
+  DocumentStatus.DRAFT,
+  DocumentStatus.RETURNED,
+  DocumentStatus.SUBMITTED,
+];
 
 @Injectable()
 export class PurchaseOrdersService {
@@ -16,6 +35,7 @@ export class PurchaseOrdersService {
     private readonly serialSvc: SerialService,
     private readonly auditSvc: AuditService,
     private readonly grantsSvc: GrantsService,
+    private readonly minioSvc: MinioService,
   ) {}
 
   async findAll(query: any) {
@@ -52,18 +72,52 @@ export class PurchaseOrdersService {
     return buildPaginationResponse(data, total, page, limit);
   }
 
-  async findOne(id: string) {
+  private readonly userWithRoles = {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      roles: { include: { role: { select: { id: true, name: true } } } },
+    },
+  };
+
+  async findOne(id: string, user?: UserPayload) {
     const po = await this.prisma.purchaseOrder.findUnique({
       where: { id, deletedAt: null },
       include: {
-        vendor: true,
+        vendor: {
+          include: {
+            bankAccounts: { orderBy: { isPrimary: 'desc' } },
+          },
+        },
         grant: true,
-        pr: { select: { id: true, serialNumber: true, title: true } },
+        rfq: { select: { id: true, serialNumber: true, title: true, status: true } },
+        paf: { select: { id: true, status: true, recommendedVendorId: true } },
+        pr: {
+          select: {
+            id: true,
+            serialNumber: true,
+            title: true,
+            requestedBy: this.userWithRoles,
+          },
+        },
         items: true,
         workflow: {
           include: {
-            steps: { orderBy: { stepNumber: 'asc' } },
-            actions: { include: { actor: { select: { firstName: true, lastName: true } } }, orderBy: { actionAt: 'asc' } },
+            template: { select: { id: true } },
+            steps: {
+              orderBy: { stepNumber: 'asc' },
+              include: {
+                digitalSignature: {
+                  include: { user: this.userWithRoles },
+                },
+              },
+            },
+            actions: {
+              include: { actor: this.userWithRoles },
+              orderBy: { actionAt: 'asc' },
+            },
           },
         },
         goodsReceipts: {
@@ -75,7 +129,20 @@ export class PurchaseOrdersService {
       },
     });
     if (!po) throw new NotFoundException(`Purchase Order ${id} not found`);
-    return po;
+
+    let createdBy = null;
+    if (po.createdById) {
+      createdBy = await this.prisma.user.findUnique({
+        where: { id: po.createdById },
+        ...this.userWithRoles,
+      });
+    }
+
+    const approvalContext = user
+      ? await this.workflowSvc.buildApprovalContext(po.workflow, user.id, user.roles)
+      : await this.workflowSvc.buildApprovalContext(po.workflow);
+
+    return { ...po, createdBy, approvalContext };
   }
 
   async create(dto: any, user: UserPayload) {
@@ -147,17 +214,71 @@ export class PurchaseOrdersService {
   }
 
   async approve(id: string, comment: string | undefined, user: UserPayload) {
+    return this.processWorkflowAction(id, 'APPROVE', comment, user);
+  }
+
+  async reject(id: string, comment: string, user: UserPayload) {
+    if (!comment?.trim()) {
+      throw new BadRequestException('A comment is required when rejecting');
+    }
+    return this.processWorkflowAction(id, 'REJECT', comment, user);
+  }
+
+  async return_(id: string, comment: string, user: UserPayload) {
+    if (!comment?.trim()) {
+      throw new BadRequestException('A comment is required when returning');
+    }
+    return this.processWorkflowAction(id, 'RETURN', comment, user);
+  }
+
+  private async processWorkflowAction(
+    id: string,
+    action: 'APPROVE' | 'REJECT' | 'RETURN',
+    comment: string | undefined,
+    user: UserPayload,
+  ) {
     const po = await this.findOne(id);
     if (!po.workflowInstanceId) throw new BadRequestException('No active workflow');
 
-    const instance = await this.workflowSvc.processAction(po.workflowInstanceId, 'APPROVE' as any, user.id, comment);
+    const instance = await this.workflowSvc.processAction(
+      po.workflowInstanceId,
+      action as any,
+      user.id,
+      comment,
+      { ipAddress: user.ipAddress, userAgent: user.userAgent },
+    );
 
-    let newStatus = po.status;
-    if (instance.status === 'APPROVED') {
+    let newStatus = po.status as DocumentStatus;
+    if (action === 'RETURN') {
+      newStatus = DocumentStatus.RETURNED;
+    } else if (instance.status === 'APPROVED') {
       newStatus = DocumentStatus.APPROVED;
+    } else if (instance.status === 'REJECTED') {
+      newStatus = DocumentStatus.REJECTED;
+    } else if (instance.status === 'RETURNED') {
+      newStatus = DocumentStatus.RETURNED;
     }
 
-    return this.prisma.purchaseOrder.update({ where: { id }, data: { status: newStatus } });
+    if (newStatus !== po.status) {
+      await this.prisma.purchaseOrder.update({
+        where: { id },
+        data: { status: newStatus },
+      });
+    }
+
+    await this.auditSvc.log({
+      userId: user.id,
+      userEmail: user.email,
+      action: action === 'APPROVE' ? 'APPROVE' : action === 'REJECT' ? 'REJECT' : 'RETURN',
+      module: 'PROCUREMENT',
+      resource: 'PurchaseOrder',
+      resourceId: id,
+      newValues: { status: newStatus, workflowAction: action },
+      ipAddress: user.ipAddress,
+      userAgent: user.userAgent,
+    });
+
+    return { status: newStatus, workflowInstance: instance };
   }
 
   async issue(id: string, user: UserPayload) {
@@ -189,5 +310,130 @@ export class PurchaseOrdersService {
       throw new BadRequestException('Cannot delete an approved or issued PO');
     }
     await this.prisma.purchaseOrder.update({ where: { id }, data: { deletedAt: new Date() } });
+  }
+
+  async uploadDocuments(
+    poId: string,
+    files: Express.Multer.File[],
+    labels: string[],
+    user: UserPayload,
+  ) {
+    const po = await this.findOne(poId);
+    if (!PO_DOC_EDITABLE_STATUSES.includes(po.status as DocumentStatus)) {
+      throw new BadRequestException(
+        'Documents can only be added to DRAFT, RETURNED, or SUBMITTED purchase orders',
+      );
+    }
+
+    const results: any[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const label = labels[i] ?? 'Other';
+
+      if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
+        throw new BadRequestException(
+          `File type '${file.mimetype}' is not allowed for '${file.originalname}'`,
+        );
+      }
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        throw new BadRequestException(
+          `File '${file.originalname}' exceeds the 20 MB size limit`,
+        );
+      }
+
+      const timestamp = Date.now();
+      const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const storageKey = `purchase-orders/${poId}/${timestamp}-${safeName}`;
+
+      await this.minioSvc.uploadFile(file.buffer, storageKey, file.mimetype);
+      const fileUrl = this.minioSvc.buildPublicUrl(storageKey);
+
+      const attachment = await this.prisma.documentAttachment.create({
+        data: {
+          documentType: 'PurchaseOrder',
+          documentId: poId,
+          fileName: label,
+          originalName: file.originalname,
+          fileSize: file.size,
+          mimeType: file.mimetype,
+          fileUrl,
+          storageKey,
+          uploadedById: user.id,
+        },
+        include: {
+          uploadedBy: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+
+      results.push(attachment);
+    }
+
+    await this.auditSvc.log({
+      userId: user.id,
+      userEmail: user.email,
+      action: 'CREATE',
+      module: 'PROCUREMENT',
+      resource: 'DocumentAttachment',
+      resourceId: poId,
+      newValues: { count: results.length },
+      ipAddress: user.ipAddress,
+      userAgent: user.userAgent,
+    });
+
+    return results;
+  }
+
+  async listDocuments(poId: string) {
+    await this.findOne(poId);
+
+    return this.prisma.documentAttachment.findMany({
+      where: {
+        documentType: 'PurchaseOrder',
+        documentId: poId,
+        deletedAt: null,
+      },
+      include: {
+        uploadedBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async deleteDocument(poId: string, attachmentId: string, user: UserPayload) {
+    const po = await this.findOne(poId);
+    if (!PO_DOC_EDITABLE_STATUSES.includes(po.status as DocumentStatus)) {
+      throw new BadRequestException(
+        'Documents can only be removed from DRAFT, RETURNED, or SUBMITTED purchase orders',
+      );
+    }
+
+    const attachment = await this.prisma.documentAttachment.findFirst({
+      where: {
+        id: attachmentId,
+        documentType: 'PurchaseOrder',
+        documentId: poId,
+        deletedAt: null,
+      },
+    });
+    if (!attachment) throw new NotFoundException('Document not found');
+
+    await this.prisma.documentAttachment.update({
+      where: { id: attachmentId },
+      data: { deletedAt: new Date() },
+    });
+
+    await this.minioSvc.deleteFile(attachment.storageKey);
+
+    await this.auditSvc.log({
+      userId: user.id,
+      userEmail: user.email,
+      action: 'SOFT_DELETE',
+      module: 'PROCUREMENT',
+      resource: 'DocumentAttachment',
+      resourceId: attachmentId,
+      ipAddress: user.ipAddress,
+      userAgent: user.userAgent,
+    });
   }
 }

@@ -12,13 +12,13 @@ export declare class ChartOfAccountsService {
         } & {
             level: number;
             id: string;
-            arabicName: string | null;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date | null;
             name: string;
             description: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            arabicName: string | null;
+            isActive: boolean;
+            deletedAt: Date | null;
             parentId: string | null;
             code: string;
             accountType: import(".prisma/client").$Enums.AccountType;
@@ -50,13 +50,13 @@ export declare class ChartOfAccountsService {
     } & {
         level: number;
         id: string;
-        arabicName: string | null;
-        isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        arabicName: string | null;
+        isActive: boolean;
+        deletedAt: Date | null;
         parentId: string | null;
         code: string;
         accountType: import(".prisma/client").$Enums.AccountType;
@@ -74,9 +74,9 @@ export declare class ChartOfAccountsService {
             currency: string;
             exchangeRate: import(".prisma/client/runtime/library").Decimal;
             id: string;
+            description: string | null;
             createdAt: Date;
             updatedAt: Date;
-            description: string | null;
             grantId: string | null;
             activityId: string | null;
             budgetLineId: string | null;
@@ -98,13 +98,13 @@ export declare class ChartOfAccountsService {
     create(dto: any): Promise<{
         level: number;
         id: string;
-        arabicName: string | null;
-        isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        arabicName: string | null;
+        isActive: boolean;
+        deletedAt: Date | null;
         parentId: string | null;
         code: string;
         accountType: import(".prisma/client").$Enums.AccountType;
@@ -114,13 +114,13 @@ export declare class ChartOfAccountsService {
     update(id: string, dto: any): Promise<{
         level: number;
         id: string;
-        arabicName: string | null;
-        isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        arabicName: string | null;
+        isActive: boolean;
+        deletedAt: Date | null;
         parentId: string | null;
         code: string;
         accountType: import(".prisma/client").$Enums.AccountType;

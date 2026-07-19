@@ -18,7 +18,7 @@ export class PaymentsController {
   @Get('payment-vouchers/:id') @RequirePermissions('PAYMENTS:READ') findOneVoucher(@Param('id') id: string) { return this.svc.findOneVoucher(id); }
   @Post('payment-vouchers/:id/submit') @RequirePermissions('PAYMENTS:SUBMIT') submitVoucher(@Param('id') id: string, @CurrentUser() user: UserPayload) { return this.svc.submitVoucher(id, user); }
   @Post('payment-vouchers/:id/approve') @RequirePermissions('PAYMENTS:APPROVE') approveVoucher(@Param('id') id: string, @Body() body: { comment?: string }, @CurrentUser() user: UserPayload) { return this.svc.approveVoucher(id, body.comment, user); }
-  @Post('payment-vouchers/:id/mark-paid') @RequirePermissions('PAYMENTS:EXECUTE') markPaid(@Param('id') id: string, @Body() dto: any, @CurrentUser() user: UserPayload) { return this.svc.markPaid(id, dto, user); }
+  @Post('payment-vouchers/:id/mark-paid') @RequirePermissions('PAYMENTS:PAY') markPaid(@Param('id') id: string, @Body() dto: any, @CurrentUser() user: UserPayload) { return this.svc.markPaid(id, dto, user); }
 
   @Get('cheques') @RequirePermissions('CHEQUES:READ') findCheques(@Query() q: any) { return this.svc.findAllCheques(q); }
   @Patch('cheques/:id/status') @RequirePermissions('CHEQUES:UPDATE') updateCheque(@Param('id') id: string, @Body() body: { status: string }, @CurrentUser() user: UserPayload) { return this.svc.updateChequeStatus(id, body.status, user); }

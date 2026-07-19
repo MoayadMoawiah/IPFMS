@@ -9,9 +9,24 @@ import { WorkflowService } from '../../workflow/workflow.service';
 import { SerialService } from '../../serial/serial.service';
 import { AuditService } from '../../audit/audit.service';
 import { GrantsService } from '../../grants/grants.service';
+import { MinioService } from '../../uploads/minio.service';
 import { DocumentStatus, Prisma } from '@prisma/client';
 import { UserPayload } from '../../common/decorators/current-user.decorator';
 import { buildPaginationResponse, parsePagination } from '../../common/dto/pagination.dto';
+import { resolveProcurementRoute, ProcurementRoute } from '../../common/constants/procurement.constants';
+import { RfqService } from '../rfq/rfq.service';
+
+const ALLOWED_MIME_TYPES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'image/jpeg',
+  'image/png',
+]);
+
+const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 
 @Injectable()
 export class RequisitionsService {
@@ -21,6 +36,8 @@ export class RequisitionsService {
     private readonly serialSvc: SerialService,
     private readonly auditSvc: AuditService,
     private readonly grantsSvc: GrantsService,
+    private readonly minioSvc: MinioService,
+    private readonly rfqSvc: RfqService,
   ) {}
 
   async findAll(query: any, user: UserPayload) {
@@ -46,6 +63,26 @@ export class RequisitionsService {
           requestedBy: { select: { id: true, firstName: true, lastName: true } },
           procurementMethod: { select: { id: true, name: true, code: true } },
           _count: { select: { items: true } },
+          workflow: {
+            select: {
+              id: true,
+              status: true,
+              templateId: true,
+              currentStepNumber: true,
+              steps: {
+                where: { status: 'IN_PROGRESS' },
+                take: 1,
+                select: {
+                  stepNumber: true,
+                  stepName: true,
+                  assignedRoleId: true,
+                  assignedUserId: true,
+                  status: true,
+                  dueAt: true,
+                },
+              },
+            },
+          },
         },
         skip: (page - 1) * limit,
         take: limit,
@@ -54,29 +91,114 @@ export class RequisitionsService {
       this.prisma.purchaseRequisition.count({ where }),
     ]);
 
-    return buildPaginationResponse(data, total, page, limit);
+    const enriched = await Promise.all(
+      data.map(async (pr) => {
+        const approvalContext = await this.workflowSvc.buildApprovalContext(pr.workflow);
+        const { workflow, ...rest } = pr;
+        return { ...rest, approvalContext };
+      }),
+    );
+
+    return buildPaginationResponse(enriched, total, page, limit);
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, user?: UserPayload) {
     const pr = await this.prisma.purchaseRequisition.findUnique({
       where: { id, deletedAt: null },
       include: {
         grant: true,
         activity: true,
-        requestedBy: { select: { id: true, firstName: true, lastName: true, email: true } },
+        requestedBy: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            roles: { include: { role: { select: { id: true, name: true } } } },
+          },
+        },
         procurementMethod: true,
         items: true,
+        rfqs: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            serialNumber: true,
+            status: true,
+            submissionDeadline: true,
+            createdAt: true,
+          },
+        },
+        purchaseOrders: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            serialNumber: true,
+            status: true,
+            totalAmount: true,
+            currency: true,
+            vendor: { select: { id: true, name: true } },
+          },
+        },
+        pafForms: {
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            status: true,
+            rfqId: true,
+            recommendedVendorId: true,
+            totalAmount: true,
+          },
+        },
         workflow: {
           include: {
-            steps: { orderBy: { stepNumber: 'asc' }, include: { digitalSignature: true } },
-            actions: { include: { actor: { select: { firstName: true, lastName: true } } }, orderBy: { actionAt: 'asc' } },
+            template: { select: { id: true } },
+            steps: {
+              orderBy: { stepNumber: 'asc' },
+              include: {
+                digitalSignature: {
+                  include: {
+                    user: {
+                      select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        roles: { include: { role: { select: { id: true, name: true } } } },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            actions: {
+              include: {
+                actor: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    roles: { include: { role: { select: { id: true, name: true } } } },
+                  },
+                },
+              },
+              orderBy: { actionAt: 'asc' },
+            },
           },
         },
       },
     });
 
     if (!pr) throw new NotFoundException(`Purchase Requisition ${id} not found`);
-    return pr;
+
+    const approvalContext = user
+      ? await this.workflowSvc.buildApprovalContext(pr.workflow, user.id, user.roles)
+      : await this.workflowSvc.buildApprovalContext(pr.workflow);
+
+    const procurementRoute = resolveProcurementRoute(Number(pr.totalEstimatedAmount));
+
+    return { ...pr, approvalContext, procurementRoute };
   }
 
   async create(dto: any, user: UserPayload) {
@@ -239,11 +361,14 @@ export class RequisitionsService {
       action as any,
       user.id,
       comment,
+      { ipAddress: user.ipAddress, userAgent: user.userAgent },
     );
 
     // Update PR status based on workflow outcome
     let newStatus = pr.status as DocumentStatus;
-    if (instance.status === 'APPROVED') {
+    if (action === 'RETURN') {
+      newStatus = DocumentStatus.RETURNED;
+    } else if (instance.status === 'APPROVED') {
       newStatus = DocumentStatus.APPROVED;
       // Commit budget on final approval
       if (pr.budgetLineId) {
@@ -271,7 +396,27 @@ export class RequisitionsService {
       newValues: { status: newStatus, workflowAction: action },
     });
 
-    return { status: newStatus, workflowInstance: instance };
+    let procurementRoute: ProcurementRoute | undefined;
+    let nextStep: { type: 'RFQ' | 'PO'; rfqId?: string; redirectUrl: string } | undefined;
+
+    if (newStatus === DocumentStatus.APPROVED && action === 'APPROVE') {
+      procurementRoute = resolveProcurementRoute(Number(pr.totalEstimatedAmount));
+      if (procurementRoute === 'RFQ') {
+        const rfq = await this.rfqSvc.createDraftFromPr(id, user);
+        nextStep = {
+          type: 'RFQ',
+          rfqId: rfq.id,
+          redirectUrl: `/procurement/rfq/${rfq.id}`,
+        };
+      } else {
+        nextStep = {
+          type: 'PO',
+          redirectUrl: `/procurement/purchase-orders/new?prId=${id}`,
+        };
+      }
+    }
+
+    return { status: newStatus, workflowInstance: instance, procurementRoute, nextStep };
   }
 
   async softDelete(id: string, user: UserPayload) {
@@ -302,6 +447,127 @@ export class RequisitionsService {
         totalEstimated: new Prisma.Decimal(Number(dto.quantity) * Number(dto.estimatedUnitPrice)),
         budgetLineId: dto.budgetLineId,
       },
+    });
+  }
+
+  async uploadDocuments(
+    prId: string,
+    files: Express.Multer.File[],
+    labels: string[],
+    user: UserPayload,
+  ) {
+    const pr = await this.findOne(prId);
+    if (pr.status !== DocumentStatus.DRAFT && pr.status !== DocumentStatus.RETURNED) {
+      throw new BadRequestException('Documents can only be added to DRAFT or RETURNED PRs');
+    }
+
+    const results: any[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const label = labels[i] ?? 'Other';
+
+      if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
+        throw new BadRequestException(
+          `File type '${file.mimetype}' is not allowed for '${file.originalname}'`,
+        );
+      }
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        throw new BadRequestException(
+          `File '${file.originalname}' exceeds the 20 MB size limit`,
+        );
+      }
+
+      const timestamp = Date.now();
+      const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const storageKey = `requisitions/${prId}/${timestamp}-${safeName}`;
+
+      await this.minioSvc.uploadFile(file.buffer, storageKey, file.mimetype);
+      const fileUrl = this.minioSvc.buildPublicUrl(storageKey);
+
+      const attachment = await this.prisma.documentAttachment.create({
+        data: {
+          documentType: 'PurchaseRequisition',
+          documentId: prId,
+          fileName: label,
+          originalName: file.originalname,
+          fileSize: file.size,
+          mimeType: file.mimetype,
+          fileUrl,
+          storageKey,
+          uploadedById: user.id,
+        },
+        include: {
+          uploadedBy: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+
+      results.push(attachment);
+    }
+
+    await this.auditSvc.log({
+      userId: user.id,
+      userEmail: user.email,
+      action: 'CREATE',
+      module: 'PROCUREMENT',
+      resource: 'DocumentAttachment',
+      resourceId: prId,
+      newValues: { count: results.length },
+      ipAddress: user.ipAddress,
+      userAgent: user.userAgent,
+    });
+
+    return results;
+  }
+
+  async listDocuments(prId: string) {
+    await this.findOne(prId);
+
+    return this.prisma.documentAttachment.findMany({
+      where: {
+        documentType: 'PurchaseRequisition',
+        documentId: prId,
+        deletedAt: null,
+      },
+      include: {
+        uploadedBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async deleteDocument(prId: string, attachmentId: string, user: UserPayload) {
+    const pr = await this.findOne(prId);
+    if (pr.status !== DocumentStatus.DRAFT && pr.status !== DocumentStatus.RETURNED) {
+      throw new BadRequestException('Documents can only be removed from DRAFT or RETURNED PRs');
+    }
+
+    const attachment = await this.prisma.documentAttachment.findFirst({
+      where: {
+        id: attachmentId,
+        documentType: 'PurchaseRequisition',
+        documentId: prId,
+        deletedAt: null,
+      },
+    });
+    if (!attachment) throw new NotFoundException('Document not found');
+
+    await this.prisma.documentAttachment.update({
+      where: { id: attachmentId },
+      data: { deletedAt: new Date() },
+    });
+
+    await this.minioSvc.deleteFile(attachment.storageKey);
+
+    await this.auditSvc.log({
+      userId: user.id,
+      userEmail: user.email,
+      action: 'SOFT_DELETE',
+      module: 'PROCUREMENT',
+      resource: 'DocumentAttachment',
+      resourceId: attachmentId,
+      ipAddress: user.ipAddress,
+      userAgent: user.userAgent,
     });
   }
 }

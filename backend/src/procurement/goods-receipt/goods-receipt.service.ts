@@ -48,15 +48,38 @@ export class GoodsReceiptService {
   }
 
   async findOne(id: string) {
+    const userWithRoles = {
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        roles: { include: { role: { select: { id: true, name: true } } } },
+      },
+    };
+
     const grn = await this.prisma.goodsReceipt.findUnique({
       where: { id, deletedAt: null },
       include: {
-        po: { include: { items: true } },
+        po: { include: { items: true, vendor: { select: { id: true, name: true } } } },
         grant: true,
         warehouse: true,
-        receivedBy: { select: { firstName: true, lastName: true } },
+        receivedBy: userWithRoles,
         items: { include: { poItem: true } },
-        workflow: { include: { steps: { orderBy: { stepNumber: 'asc' } } } },
+        workflow: {
+          include: {
+            steps: {
+              orderBy: { stepNumber: 'asc' },
+              include: {
+                digitalSignature: { include: { user: userWithRoles } },
+              },
+            },
+            actions: {
+              include: { actor: userWithRoles },
+              orderBy: { actionAt: 'asc' },
+            },
+          },
+        },
       },
     });
     if (!grn) throw new NotFoundException(`GRN ${id} not found`);
@@ -130,7 +153,13 @@ export class GoodsReceiptService {
     const grn = await this.findOne(id);
     if (!grn.workflowInstanceId) throw new BadRequestException('No active workflow');
 
-    const instance = await this.workflowSvc.processAction(grn.workflowInstanceId, 'APPROVE' as any, user.id, comment);
+    const instance = await this.workflowSvc.processAction(
+      grn.workflowInstanceId,
+      'APPROVE' as any,
+      user.id,
+      comment,
+      { ipAddress: user.ipAddress, userAgent: user.userAgent },
+    );
 
     if (instance.status === 'APPROVED') {
       // Update PO received quantities and status

@@ -10,7 +10,11 @@ export declare class DonorsService {
         } & {
             id: string;
             name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            deletedAt: Date | null;
             code: string;
+            notes: string | null;
             country: string | null;
             donorType: import(".prisma/client").$Enums.DonorType;
             contactName: string | null;
@@ -18,10 +22,6 @@ export declare class DonorsService {
             contactPhone: string | null;
             address: string | null;
             website: string | null;
-            notes: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date | null;
         })[];
         meta: {
             total: number;
@@ -32,17 +32,21 @@ export declare class DonorsService {
     }>;
     findOne(id: string): Promise<{
         grants: {
+            currency: string;
             id: string;
             name: string;
             code: string;
-            currency: string;
-            totalBudget: import(".prisma/client/runtime/library").Decimal;
             status: import(".prisma/client").$Enums.GrantStatus;
+            totalBudget: import(".prisma/client/runtime/library").Decimal;
         }[];
     } & {
         id: string;
         name: string;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
         code: string;
+        notes: string | null;
         country: string | null;
         donorType: import(".prisma/client").$Enums.DonorType;
         contactName: string | null;
@@ -50,15 +54,15 @@ export declare class DonorsService {
         contactPhone: string | null;
         address: string | null;
         website: string | null;
-        notes: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
     }>;
     create(dto: any): Promise<{
         id: string;
         name: string;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
         code: string;
+        notes: string | null;
         country: string | null;
         donorType: import(".prisma/client").$Enums.DonorType;
         contactName: string | null;
@@ -66,15 +70,15 @@ export declare class DonorsService {
         contactPhone: string | null;
         address: string | null;
         website: string | null;
-        notes: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
     }>;
     update(id: string, dto: any): Promise<{
         id: string;
         name: string;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
         code: string;
+        notes: string | null;
         country: string | null;
         donorType: import(".prisma/client").$Enums.DonorType;
         contactName: string | null;
@@ -82,10 +86,6 @@ export declare class DonorsService {
         contactPhone: string | null;
         address: string | null;
         website: string | null;
-        notes: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
     }>;
     softDelete(id: string): Promise<void>;
 }

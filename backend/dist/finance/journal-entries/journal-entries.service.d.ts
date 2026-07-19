@@ -24,15 +24,15 @@ export declare class JournalEntriesService {
         } & {
             currency: string;
             id: string;
+            description: string;
             createdAt: Date;
             updatedAt: Date;
-            description: string;
             createdById: string | null;
             status: import(".prisma/client").$Enums.JournalStatus;
-            grantId: string | null;
             serialNumber: string;
-            entryDate: Date;
+            grantId: string | null;
             reference: string | null;
+            entryDate: Date;
             sourceType: import(".prisma/client").$Enums.JournalSource;
             sourceId: string | null;
             periodId: string;
@@ -59,9 +59,9 @@ export declare class JournalEntriesService {
         } | null;
         period: {
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             startDate: Date;
             endDate: Date;
             status: import(".prisma/client").$Enums.PeriodStatus;
@@ -84,9 +84,9 @@ export declare class JournalEntriesService {
             currency: string;
             exchangeRate: Prisma.Decimal;
             id: string;
+            description: string | null;
             createdAt: Date;
             updatedAt: Date;
-            description: string | null;
             grantId: string | null;
             activityId: string | null;
             budgetLineId: string | null;
@@ -101,15 +101,15 @@ export declare class JournalEntriesService {
     } & {
         currency: string;
         id: string;
+        description: string;
         createdAt: Date;
         updatedAt: Date;
-        description: string;
         createdById: string | null;
         status: import(".prisma/client").$Enums.JournalStatus;
-        grantId: string | null;
         serialNumber: string;
-        entryDate: Date;
+        grantId: string | null;
         reference: string | null;
+        entryDate: Date;
         sourceType: import(".prisma/client").$Enums.JournalSource;
         sourceId: string | null;
         periodId: string;
@@ -126,9 +126,9 @@ export declare class JournalEntriesService {
             currency: string;
             exchangeRate: Prisma.Decimal;
             id: string;
+            description: string | null;
             createdAt: Date;
             updatedAt: Date;
-            description: string | null;
             grantId: string | null;
             activityId: string | null;
             budgetLineId: string | null;
@@ -143,15 +143,15 @@ export declare class JournalEntriesService {
     } & {
         currency: string;
         id: string;
+        description: string;
         createdAt: Date;
         updatedAt: Date;
-        description: string;
         createdById: string | null;
         status: import(".prisma/client").$Enums.JournalStatus;
-        grantId: string | null;
         serialNumber: string;
-        entryDate: Date;
+        grantId: string | null;
         reference: string | null;
+        entryDate: Date;
         sourceType: import(".prisma/client").$Enums.JournalSource;
         sourceId: string | null;
         periodId: string;
@@ -166,15 +166,15 @@ export declare class JournalEntriesService {
     post(id: string, user: UserPayload): Promise<{
         currency: string;
         id: string;
+        description: string;
         createdAt: Date;
         updatedAt: Date;
-        description: string;
         createdById: string | null;
         status: import(".prisma/client").$Enums.JournalStatus;
-        grantId: string | null;
         serialNumber: string;
-        entryDate: Date;
+        grantId: string | null;
         reference: string | null;
+        entryDate: Date;
         sourceType: import(".prisma/client").$Enums.JournalSource;
         sourceId: string | null;
         periodId: string;
@@ -189,15 +189,15 @@ export declare class JournalEntriesService {
     reverse(id: string, user: UserPayload): Promise<{
         currency: string;
         id: string;
+        description: string;
         createdAt: Date;
         updatedAt: Date;
-        description: string;
         createdById: string | null;
         status: import(".prisma/client").$Enums.JournalStatus;
-        grantId: string | null;
         serialNumber: string;
-        entryDate: Date;
+        grantId: string | null;
         reference: string | null;
+        entryDate: Date;
         sourceType: import(".prisma/client").$Enums.JournalSource;
         sourceId: string | null;
         periodId: string;

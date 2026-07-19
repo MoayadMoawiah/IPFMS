@@ -82,6 +82,10 @@ Arabic/RTL support is planned for a future phase.
 | Procurement Manager | procurement@gaderon.org | Demo@Gaderon2026! |
 | Project Manager | projects@gaderon.org | Demo@Gaderon2026! |
 | Internal Auditor | auditor@gaderon.org | Demo@Gaderon2026! |
+| Department Head | depthead@gaderon.org | Demo@Gaderon2026! |
+| Procurement Officer | proc.officer@gaderon.org | Demo@Gaderon2026! |
+| Finance Officer | finance.officer@gaderon.org | `Demo@Gaderon2026!` |
+| Country Director | director@gaderon.org | Demo@Gaderon2026! |
 
 ## User Roles
 

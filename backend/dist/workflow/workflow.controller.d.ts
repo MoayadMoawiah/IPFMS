@@ -10,11 +10,10 @@ export declare class WorkflowController {
     constructor(workflowService: WorkflowService);
     getTemplates(): Promise<({
         steps: {
-            name: string;
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            conditions: import(".prisma/client/runtime/library").JsonValue | null;
             stepNumber: number;
             templateId: string;
             approverRoleId: string | null;
@@ -27,84 +26,91 @@ export declare class WorkflowController {
             allowDelegate: boolean;
             allowReturn: boolean;
             allowReject: boolean;
+            conditions: import(".prisma/client/runtime/library").JsonValue | null;
         }[];
     } & {
-        name: string;
         id: string;
+        name: string;
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        createdById: string | null;
         isActive: boolean;
         documentType: string;
         version: number;
+        createdById: string | null;
     })[]>;
-    getPending(user: UserPayload): Promise<({
-        instance: {
-            id: string;
-            documentType: string;
-            documentId: string;
-        };
-    } & {
+    getPending(user: UserPayload): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        action: string | null;
-        status: import(".prisma/client").$Enums.StepStatus;
         stepNumber: number;
-        startedAt: Date | null;
-        completedAt: Date | null;
-        instanceId: string;
         stepName: string;
-        assignedUserId: string | null;
-        assignedRoleId: string | null;
         dueAt: Date | null;
-        comment: string | null;
-        digitalSignatureId: string | null;
-    })[]>;
-    getInstance(id: string): Promise<({
-        template: {
-            name: string;
+        startedAt: Date | null;
+        instanceId: string;
+        documentType: string;
+        documentId: string;
+        allowReject: boolean;
+        allowReturn: boolean;
+        waitingForRoleName: string | null;
+        document: {
+            label: string;
+            href: string;
             id: string;
-            description: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-            createdById: string | null;
-            isActive: boolean;
-            documentType: string;
-            version: number;
-        };
+            title: string;
+            status: import(".prisma/client").$Enums.DocumentStatus;
+            serialNumber: string;
+        } | {
+            title: string;
+            label: string;
+            href: string;
+            id: string;
+            status: import(".prisma/client").$Enums.DocumentStatus;
+            serialNumber: string;
+            payeeName: string;
+        } | null;
+    }[]>;
+    getInstance(id: string): Promise<({
         steps: ({
             digitalSignature: {
                 userId: string;
                 id: string;
                 createdAt: Date;
                 action: string;
-                documentType: string;
-                documentId: string;
                 ipAddress: string;
                 userAgent: string;
+                documentType: string;
+                documentId: string;
                 deviceFingerprint: string | null;
                 signedAt: Date;
                 certificate: string | null;
             } | null;
         } & {
+            comment: string | null;
             id: string;
             createdAt: Date;
             updatedAt: Date;
             action: string | null;
-            status: import(".prisma/client").$Enums.StepStatus;
             stepNumber: number;
+            status: import(".prisma/client").$Enums.StepStatus;
             startedAt: Date | null;
             completedAt: Date | null;
-            instanceId: string;
             stepName: string;
             assignedUserId: string | null;
             assignedRoleId: string | null;
             dueAt: Date | null;
-            comment: string | null;
             digitalSignatureId: string | null;
+            instanceId: string;
         })[];
+        template: {
+            id: string;
+            name: string;
+            description: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            isActive: boolean;
+            documentType: string;
+            version: number;
+            createdById: string | null;
+        };
         actions: ({
             actor: {
                 email: string;
@@ -112,11 +118,11 @@ export declare class WorkflowController {
                 lastName: string;
             };
         } & {
+            comment: string | null;
             id: string;
             action: import(".prisma/client").$Enums.WorkflowAction;
-            instanceId: string;
-            comment: string | null;
             digitalSignatureId: string | null;
+            instanceId: string;
             actionAt: Date;
             instanceStepId: string | null;
             actorId: string;
@@ -125,43 +131,43 @@ export declare class WorkflowController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        status: import(".prisma/client").$Enums.WorkflowStatus;
-        templateId: string;
         documentType: string;
         documentId: string;
         currentStepNumber: number;
+        status: import(".prisma/client").$Enums.WorkflowStatus;
         startedAt: Date;
         completedAt: Date | null;
+        templateId: string;
     }) | null>;
     processAction(id: string, dto: WorkflowActionDto, user: UserPayload): Promise<{
         steps: {
+            comment: string | null;
             id: string;
             createdAt: Date;
             updatedAt: Date;
             action: string | null;
-            status: import(".prisma/client").$Enums.StepStatus;
             stepNumber: number;
+            status: import(".prisma/client").$Enums.StepStatus;
             startedAt: Date | null;
             completedAt: Date | null;
-            instanceId: string;
             stepName: string;
             assignedUserId: string | null;
             assignedRoleId: string | null;
             dueAt: Date | null;
-            comment: string | null;
             digitalSignatureId: string | null;
+            instanceId: string;
         }[];
     } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        status: import(".prisma/client").$Enums.WorkflowStatus;
-        templateId: string;
         documentType: string;
         documentId: string;
         currentStepNumber: number;
+        status: import(".prisma/client").$Enums.WorkflowStatus;
         startedAt: Date;
         completedAt: Date | null;
+        templateId: string;
     }>;
 }
 export {};

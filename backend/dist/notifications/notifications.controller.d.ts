@@ -5,14 +5,14 @@ export declare class NotificationsController {
     constructor(svc: NotificationsService);
     findAll(user: UserPayload, q: any): Promise<{
         data: {
+            userId: string;
             id: string;
             createdAt: Date;
-            userId: string;
             type: import(".prisma/client").$Enums.NotificationType;
-            documentType: string | null;
-            documentId: string | null;
             title: string;
             message: string;
+            documentType: string | null;
+            documentId: string | null;
             actionUrl: string | null;
             isRead: boolean;
             readAt: Date | null;
@@ -30,14 +30,14 @@ export declare class NotificationsController {
         count: number;
     }>;
     markRead(id: string, user: UserPayload): Promise<{
+        userId: string;
         id: string;
         createdAt: Date;
-        userId: string;
         type: import(".prisma/client").$Enums.NotificationType;
-        documentType: string | null;
-        documentId: string | null;
         title: string;
         message: string;
+        documentType: string | null;
+        documentId: string | null;
         actionUrl: string | null;
         isRead: boolean;
         readAt: Date | null;

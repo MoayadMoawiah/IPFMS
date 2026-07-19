@@ -20,8 +20,8 @@ export declare class RbacController {
             userRoles: number;
         };
     } & {
-        name: string;
         id: string;
+        name: string;
         displayName: string | null;
         description: string | null;
         isSystem: boolean;
@@ -33,8 +33,8 @@ export declare class RbacController {
         displayName: string;
         description?: string;
     }): Promise<{
-        name: string;
         id: string;
+        name: string;
         displayName: string | null;
         description: string | null;
         isSystem: boolean;

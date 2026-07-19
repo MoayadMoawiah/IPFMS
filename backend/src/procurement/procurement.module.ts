@@ -11,10 +11,13 @@ import { GoodsReceiptController } from './goods-receipt/goods-receipt.controller
 import { GoodsReceiptService } from './goods-receipt/goods-receipt.service';
 import { ContractsController } from './contracts/contracts.controller';
 import { ContractsService } from './contracts/contracts.service';
+import { PafController } from './paf/paf.controller';
+import { PafService } from './paf/paf.service';
 import { GrantsModule } from '../grants/grants.module';
+import { UploadsModule } from '../uploads/uploads.module';
 
 @Module({
-  imports: [GrantsModule],
+  imports: [GrantsModule, UploadsModule],
   controllers: [
     RequisitionsController,
     VendorsController,
@@ -22,6 +25,7 @@ import { GrantsModule } from '../grants/grants.module';
     PurchaseOrdersController,
     GoodsReceiptController,
     ContractsController,
+    PafController,
   ],
   providers: [
     RequisitionsService,
@@ -30,6 +34,7 @@ import { GrantsModule } from '../grants/grants.module';
     PurchaseOrdersService,
     GoodsReceiptService,
     ContractsService,
+    PafService,
   ],
   exports: [PurchaseOrdersService, GoodsReceiptService],
 })

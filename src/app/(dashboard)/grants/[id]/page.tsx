@@ -3,18 +3,27 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building2, Calendar, FileText, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Building2, Calendar, CheckCircle2, FileText, Lock, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { LoadingSkeleton } from "@/components/shared/loading-skeleton";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { ActivityEditDialog } from "@/components/grants/activity-edit-dialog";
-import { useGrant, useGrantBudgetSummary, useDeleteGrant } from "@/hooks/use-grants";
+import { useGrant, useGrantBudgetSummary, useDeleteGrant, useActivateGrant, useCloseGrant } from "@/hooks/use-grants";
 import { useDeleteActivity } from "@/hooks/use-projects";
 import { formatCurrency, formatDate, formatPercent } from "@/lib/formatters";
 import type { GrantActivity } from "@/lib/api/grants";
@@ -28,8 +37,13 @@ export default function GrantDetailPage() {
   const { data: budgetSummary } = useGrantBudgetSummary(grantId);
   const deleteGrant = useDeleteGrant();
   const deleteActivity = useDeleteActivity();
+  const activateGrant = useActivateGrant();
+  const closeGrant = useCloseGrant();
 
   const [deleteGrantOpen, setDeleteGrantOpen] = useState(false);
+  const [activateGrantOpen, setActivateGrantOpen] = useState(false);
+  const [closeGrantOpen, setCloseGrantOpen] = useState(false);
+  const [closureNotes, setClosureNotes] = useState("");
   const [deleteActivityTarget, setDeleteActivityTarget] = useState<GrantActivity | null>(null);
   const [editActivity, setEditActivity] = useState<GrantActivity | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -49,6 +63,35 @@ export default function GrantDetailPage() {
   const activityUnallocated =
     budgetSummary?.summary.activityUnallocated ?? Number(grant.totalBudget) - activityAllocated;
   const canEditGrant = grant.status !== "CLOSED" && grant.status !== "CANCELLED";
+  const canActivateGrant = grant.status === "DRAFT";
+  const canCloseGrant = grant.status === "ACTIVE";
+
+  const handleActivateGrant = () => {
+    setActionError(null);
+    activateGrant.mutate(grantId, {
+      onError: (err: unknown) => {
+        const e = err as { response?: { data?: { message?: string } }; message?: string };
+        setActionError(e?.response?.data?.message ?? e?.message ?? "Failed to activate grant");
+      },
+    });
+  };
+
+  const handleCloseGrant = () => {
+    setActionError(null);
+    closeGrant.mutate(
+      { id: grantId, closureNotes: closureNotes.trim() || "Grant closed." },
+      {
+        onSuccess: () => {
+          setClosureNotes("");
+          setCloseGrantOpen(false);
+        },
+        onError: (err: unknown) => {
+          const e = err as { response?: { data?: { message?: string } }; message?: string };
+          setActionError(e?.response?.data?.message ?? e?.message ?? "Failed to close grant");
+        },
+      }
+    );
+  };
 
   const handleDeleteGrant = () => {
     setActionError(null);
@@ -88,6 +131,29 @@ export default function GrantDetailPage() {
         ]}
         actions={
           <div className="flex flex-wrap gap-2">
+            <PermissionGate permission="GRANTS:APPROVE">
+              {canActivateGrant && (
+                <Button
+                  onClick={() => setActivateGrantOpen(true)}
+                  disabled={activateGrant.isPending}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {activateGrant.isPending ? "Activating…" : "Activate Grant"}
+                </Button>
+              )}
+            </PermissionGate>
+            <PermissionGate permission="GRANTS:APPROVE">
+              {canCloseGrant && (
+                <Button
+                  variant="outline"
+                  onClick={() => setCloseGrantOpen(true)}
+                  disabled={closeGrant.isPending}
+                >
+                  <Lock className="h-4 w-4" />
+                  {closeGrant.isPending ? "Closing…" : "Close Grant"}
+                </Button>
+              )}
+            </PermissionGate>
             <PermissionGate permission="GRANTS:UPDATE">
               {canEditGrant && (
                 <Button variant="outline" asChild>
@@ -403,6 +469,53 @@ export default function GrantDetailPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <ConfirmDialog
+        open={activateGrantOpen}
+        onOpenChange={setActivateGrantOpen}
+        title="Activate grant?"
+        description={`This will change "${grant.name}" from Draft to Active. Active grants can be used for purchase requisitions and procurement.`}
+        confirmLabel="Activate Grant"
+        onConfirm={handleActivateGrant}
+      />
+
+      <Dialog
+        open={closeGrantOpen}
+        onOpenChange={(open) => {
+          setCloseGrantOpen(open);
+          if (!open) setClosureNotes("");
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Close grant?</DialogTitle>
+            <DialogDescription>
+              This will change &quot;{grant.name}&quot; from Active to Closed. Closed grants
+              cannot be edited or used for new purchase requisitions.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="closureNotes" className="text-sm font-medium">
+              Closure notes
+            </label>
+            <Textarea
+              id="closureNotes"
+              value={closureNotes}
+              onChange={(e) => setClosureNotes(e.target.value)}
+              placeholder="Reason for closing this grant (optional)"
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCloseGrantOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCloseGrant} disabled={closeGrant.isPending}>
+              {closeGrant.isPending ? "Closing…" : "Close Grant"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={deleteGrantOpen}

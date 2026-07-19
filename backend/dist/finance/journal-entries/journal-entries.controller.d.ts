@@ -5,36 +5,36 @@ export declare class JournalEntriesController {
     constructor(svc: JournalEntriesService);
     findAll(q: any): Promise<{
         data: ({
-            _count: {
-                lines: number;
-            };
             grant: {
                 id: string;
                 code: string;
             } | null;
+            _count: {
+                lines: number;
+            };
             period: {
-                name: string;
                 id: string;
+                name: string;
             };
         } & {
+            currency: string;
             id: string;
             description: string;
             createdAt: Date;
             updatedAt: Date;
+            createdById: string | null;
             status: import(".prisma/client").$Enums.JournalStatus;
             serialNumber: string;
             grantId: string | null;
-            currency: string;
             reference: string | null;
-            createdById: string | null;
-            isPosted: boolean;
-            postedAt: Date | null;
             entryDate: Date;
             sourceType: import(".prisma/client").$Enums.JournalSource;
             sourceId: string | null;
             periodId: string;
             totalDebit: import(".prisma/client/runtime/library").Decimal;
             totalCredit: import(".prisma/client/runtime/library").Decimal;
+            isPosted: boolean;
+            postedAt: Date | null;
             postedById: string | null;
             isReversed: boolean;
             reversedById: string | null;
@@ -48,42 +48,42 @@ export declare class JournalEntriesController {
     }>;
     create(dto: any, user: UserPayload): Promise<{
         lines: {
+            currency: string;
+            exchangeRate: import(".prisma/client/runtime/library").Decimal;
             id: string;
             description: string | null;
             createdAt: Date;
             updatedAt: Date;
             grantId: string | null;
-            currency: string;
-            exchangeRate: import(".prisma/client/runtime/library").Decimal;
             activityId: string | null;
             budgetLineId: string | null;
             journalEntryId: string;
+            accountId: string;
             debitAmount: import(".prisma/client/runtime/library").Decimal;
             creditAmount: import(".prisma/client/runtime/library").Decimal;
             baseDebit: import(".prisma/client/runtime/library").Decimal;
             baseCredit: import(".prisma/client/runtime/library").Decimal;
             lineNumber: number;
-            accountId: string;
         }[];
     } & {
+        currency: string;
         id: string;
         description: string;
         createdAt: Date;
         updatedAt: Date;
+        createdById: string | null;
         status: import(".prisma/client").$Enums.JournalStatus;
         serialNumber: string;
         grantId: string | null;
-        currency: string;
         reference: string | null;
-        createdById: string | null;
-        isPosted: boolean;
-        postedAt: Date | null;
         entryDate: Date;
         sourceType: import(".prisma/client").$Enums.JournalSource;
         sourceId: string | null;
         periodId: string;
         totalDebit: import(".prisma/client/runtime/library").Decimal;
         totalCredit: import(".prisma/client/runtime/library").Decimal;
+        isPosted: boolean;
+        postedAt: Date | null;
         postedById: string | null;
         isReversed: boolean;
         reversedById: string | null;
@@ -100,19 +100,19 @@ export declare class JournalEntriesController {
     }>;
     findOne(id: string): Promise<{
         grant: {
-            name: string;
             id: string;
+            name: string;
             code: string;
         } | null;
         period: {
-            name: string;
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            status: import(".prisma/client").$Enums.PeriodStatus;
-            fiscalYearId: string;
             startDate: Date;
             endDate: Date;
+            status: import(".prisma/client").$Enums.PeriodStatus;
+            fiscalYearId: string;
             periodNumber: number;
             closedById: string | null;
             closedAt: Date | null;
@@ -123,93 +123,93 @@ export declare class JournalEntriesController {
         } | null;
         lines: ({
             account: {
-                name: string;
                 id: string;
+                name: string;
                 code: string;
             };
         } & {
+            currency: string;
+            exchangeRate: import(".prisma/client/runtime/library").Decimal;
             id: string;
             description: string | null;
             createdAt: Date;
             updatedAt: Date;
             grantId: string | null;
-            currency: string;
-            exchangeRate: import(".prisma/client/runtime/library").Decimal;
             activityId: string | null;
             budgetLineId: string | null;
             journalEntryId: string;
+            accountId: string;
             debitAmount: import(".prisma/client/runtime/library").Decimal;
             creditAmount: import(".prisma/client/runtime/library").Decimal;
             baseDebit: import(".prisma/client/runtime/library").Decimal;
             baseCredit: import(".prisma/client/runtime/library").Decimal;
             lineNumber: number;
-            accountId: string;
         })[];
     } & {
+        currency: string;
         id: string;
         description: string;
         createdAt: Date;
         updatedAt: Date;
+        createdById: string | null;
         status: import(".prisma/client").$Enums.JournalStatus;
         serialNumber: string;
         grantId: string | null;
-        currency: string;
         reference: string | null;
-        createdById: string | null;
-        isPosted: boolean;
-        postedAt: Date | null;
         entryDate: Date;
         sourceType: import(".prisma/client").$Enums.JournalSource;
         sourceId: string | null;
         periodId: string;
         totalDebit: import(".prisma/client/runtime/library").Decimal;
         totalCredit: import(".prisma/client/runtime/library").Decimal;
+        isPosted: boolean;
+        postedAt: Date | null;
         postedById: string | null;
         isReversed: boolean;
         reversedById: string | null;
     }>;
     post(id: string, user: UserPayload): Promise<{
+        currency: string;
         id: string;
         description: string;
         createdAt: Date;
         updatedAt: Date;
+        createdById: string | null;
         status: import(".prisma/client").$Enums.JournalStatus;
         serialNumber: string;
         grantId: string | null;
-        currency: string;
         reference: string | null;
-        createdById: string | null;
-        isPosted: boolean;
-        postedAt: Date | null;
         entryDate: Date;
         sourceType: import(".prisma/client").$Enums.JournalSource;
         sourceId: string | null;
         periodId: string;
         totalDebit: import(".prisma/client/runtime/library").Decimal;
         totalCredit: import(".prisma/client/runtime/library").Decimal;
+        isPosted: boolean;
+        postedAt: Date | null;
         postedById: string | null;
         isReversed: boolean;
         reversedById: string | null;
     }>;
     reverse(id: string, user: UserPayload): Promise<{
+        currency: string;
         id: string;
         description: string;
         createdAt: Date;
         updatedAt: Date;
+        createdById: string | null;
         status: import(".prisma/client").$Enums.JournalStatus;
         serialNumber: string;
         grantId: string | null;
-        currency: string;
         reference: string | null;
-        createdById: string | null;
-        isPosted: boolean;
-        postedAt: Date | null;
         entryDate: Date;
         sourceType: import(".prisma/client").$Enums.JournalSource;
         sourceId: string | null;
         periodId: string;
         totalDebit: import(".prisma/client/runtime/library").Decimal;
         totalCredit: import(".prisma/client/runtime/library").Decimal;
+        isPosted: boolean;
+        postedAt: Date | null;
         postedById: string | null;
         isReversed: boolean;
         reversedById: string | null;

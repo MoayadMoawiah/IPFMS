@@ -64,7 +64,7 @@ let WorkflowService = WorkflowService_1 = class WorkflowService {
         });
         return instance;
     }
-    async processAction(instanceId, action, actorId, comment) {
+    async processAction(instanceId, action, actorId, comment, meta) {
         const instance = await this.prisma.workflowInstance.findUnique({
             where: { id: instanceId },
             include: {
@@ -83,14 +83,15 @@ let WorkflowService = WorkflowService_1 = class WorkflowService {
         if (currentStep.status !== client_1.StepStatus.IN_PROGRESS) {
             throw new common_1.BadRequestException('Current step is not in progress');
         }
+        await this.assertUserCanActOnCurrentStep(currentStep, actorId);
         const signature = await this.prisma.digitalSignature.create({
             data: {
                 userId: actorId,
                 documentType: instance.documentType,
                 documentId: instance.documentId,
                 action: action,
-                ipAddress: '0.0.0.0',
-                userAgent: 'API',
+                ipAddress: meta?.ipAddress || '0.0.0.0',
+                userAgent: meta?.userAgent || 'API',
                 signedAt: new Date(),
             },
         });
@@ -140,6 +141,7 @@ let WorkflowService = WorkflowService_1 = class WorkflowService {
             nextStatus = client_1.WorkflowStatus.REJECTED;
         }
         else if (action === client_1.WorkflowAction.RETURN) {
+            nextStatus = client_1.WorkflowStatus.RETURNED;
             nextStepNumber = 1;
             const firstStep = instance.steps.find((s) => s.stepNumber === 1);
             if (firstStep) {
@@ -198,25 +200,177 @@ let WorkflowService = WorkflowService_1 = class WorkflowService {
             },
         });
     }
-    async getPendingForUser(userId, roles) {
+    async getPendingForUser(userId, roleNames) {
+        const userRoles = await this.prisma.role.findMany({
+            where: { name: { in: roleNames } },
+            select: { id: true },
+        });
+        const roleIds = userRoles.map((r) => r.id);
         const steps = await this.prisma.workflowInstanceStep.findMany({
             where: {
                 status: client_1.StepStatus.IN_PROGRESS,
+                instance: { status: client_1.WorkflowStatus.IN_PROGRESS },
                 OR: [
                     { assignedUserId: userId },
-                    {
-                        assignedRoleId: {
-                            in: roles,
-                        },
-                    },
+                    ...(roleIds.length ? [{ assignedRoleId: { in: roleIds } }] : []),
                 ],
             },
             include: {
-                instance: { select: { documentType: true, documentId: true, id: true } },
+                instance: {
+                    include: {
+                        template: { include: { steps: { orderBy: { stepNumber: 'asc' } } } },
+                    },
+                },
             },
             orderBy: { dueAt: 'asc' },
         });
-        return steps;
+        return Promise.all(steps.map(async (step) => {
+            const { instance } = step;
+            const templateStep = instance.template.steps.find((s) => s.stepNumber === step.stepNumber);
+            const document = await this.resolveDocumentMetadata(instance.documentType, instance.documentId);
+            const roleNameMap = await this.resolveRoleNames(step.assignedRoleId ? [step.assignedRoleId] : []);
+            return {
+                id: step.id,
+                stepNumber: step.stepNumber,
+                stepName: step.stepName,
+                dueAt: step.dueAt,
+                startedAt: step.startedAt,
+                instanceId: instance.id,
+                documentType: instance.documentType,
+                documentId: instance.documentId,
+                allowReject: templateStep?.allowReject ?? true,
+                allowReturn: templateStep?.allowReturn ?? true,
+                waitingForRoleName: step.assignedRoleId
+                    ? roleNameMap.get(step.assignedRoleId) ?? null
+                    : null,
+                document,
+            };
+        }));
+    }
+    async resolveRoleNames(roleIds) {
+        const uniqueIds = [...new Set(roleIds.filter(Boolean))];
+        if (!uniqueIds.length)
+            return new Map();
+        const roles = await this.prisma.role.findMany({
+            where: { id: { in: uniqueIds } },
+            select: { id: true, name: true },
+        });
+        return new Map(roles.map((r) => [r.id, r.name]));
+    }
+    async buildApprovalContext(workflow, userId, roleNames) {
+        if (!workflow || workflow.status !== client_1.WorkflowStatus.IN_PROGRESS) {
+            return null;
+        }
+        const currentStep = workflow.steps.find((s) => s.status === client_1.StepStatus.IN_PROGRESS);
+        if (!currentStep)
+            return null;
+        const roleNameMap = await this.resolveRoleNames(currentStep.assignedRoleId ? [currentStep.assignedRoleId] : []);
+        const templateStep = await this.prisma.workflowStep.findUnique({
+            where: {
+                templateId_stepNumber: {
+                    templateId: workflow.templateId,
+                    stepNumber: currentStep.stepNumber,
+                },
+            },
+            select: { allowReject: true, allowReturn: true },
+        });
+        let canAct = false;
+        if (userId !== undefined && roleNames !== undefined) {
+            canAct = await this.userCanActOnStep(currentStep, userId, roleNames);
+        }
+        return {
+            waitingForRoleName: currentStep.assignedRoleId
+                ? roleNameMap.get(currentStep.assignedRoleId) ?? null
+                : null,
+            waitingForStepName: currentStep.stepName,
+            dueAt: currentStep.dueAt,
+            canAct,
+            allowReject: templateStep?.allowReject ?? true,
+            allowReturn: templateStep?.allowReturn ?? true,
+        };
+    }
+    async userCanActOnStep(step, userId, roleNames) {
+        if (step.assignedUserId && step.assignedUserId === userId) {
+            return true;
+        }
+        if (!step.assignedRoleId)
+            return false;
+        const userRoles = await this.prisma.role.findMany({
+            where: { name: { in: roleNames } },
+            select: { id: true },
+        });
+        return userRoles.some((r) => r.id === step.assignedRoleId);
+    }
+    async assertUserCanActOnCurrentStep(currentStep, actorId) {
+        const userRoles = await this.prisma.userRole.findMany({
+            where: { userId: actorId },
+            select: { role: { select: { name: true } } },
+        });
+        const roleNames = userRoles.map((ur) => ur.role.name);
+        const canAct = await this.userCanActOnStep(currentStep, actorId, roleNames);
+        if (!canAct) {
+            throw new common_1.ForbiddenException('You are not assigned to approve the current workflow step');
+        }
+    }
+    async resolveDocumentMetadata(documentType, documentId) {
+        switch (documentType) {
+            case 'PURCHASE_REQUISITION': {
+                const doc = await this.prisma.purchaseRequisition.findUnique({
+                    where: { id: documentId },
+                    select: { id: true, serialNumber: true, title: true, status: true },
+                });
+                if (!doc)
+                    return null;
+                return {
+                    ...doc,
+                    label: 'Purchase Requisition',
+                    href: `/procurement/requisitions/${doc.id}`,
+                };
+            }
+            case 'PURCHASE_ORDER': {
+                const doc = await this.prisma.purchaseOrder.findUnique({
+                    where: { id: documentId },
+                    select: { id: true, serialNumber: true, title: true, status: true },
+                });
+                if (!doc)
+                    return null;
+                return {
+                    ...doc,
+                    label: 'Purchase Order',
+                    href: `/procurement/purchase-orders/${doc.id}`,
+                };
+            }
+            case 'GOODS_RECEIPT': {
+                const doc = await this.prisma.goodsReceipt.findUnique({
+                    where: { id: documentId },
+                    select: { id: true, serialNumber: true, status: true },
+                });
+                if (!doc)
+                    return null;
+                return {
+                    ...doc,
+                    title: doc.serialNumber,
+                    label: 'Goods Receipt',
+                    href: `/procurement/goods-receipt/${doc.id}`,
+                };
+            }
+            case 'PAYMENT_VOUCHER': {
+                const doc = await this.prisma.paymentVoucher.findUnique({
+                    where: { id: documentId },
+                    select: { id: true, serialNumber: true, payeeName: true, status: true },
+                });
+                if (!doc)
+                    return null;
+                return {
+                    ...doc,
+                    title: doc.payeeName,
+                    label: 'Payment Voucher',
+                    href: `/finance/payment-vouchers/${doc.id}`,
+                };
+            }
+            default:
+                return null;
+        }
     }
     async getTemplates() {
         return this.prisma.workflowTemplate.findMany({

@@ -43,6 +43,9 @@ export class WorkflowController {
     @Body() dto: WorkflowActionDto,
     @CurrentUser() user: UserPayload,
   ) {
-    return this.workflowService.processAction(id, dto.action, user.id, dto.comment);
+    return this.workflowService.processAction(id, dto.action, user.id, dto.comment, {
+      ipAddress: user.ipAddress,
+      userAgent: user.userAgent,
+    });
   }
 }

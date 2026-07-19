@@ -51,6 +51,15 @@ let PaymentsService = class PaymentsService {
         return (0, pagination_dto_1.buildPaginationResponse)(data, total, page, limit);
     }
     async findOneVoucher(id) {
+        const userWithRoles = {
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                roles: { include: { role: { select: { id: true, name: true } } } },
+            },
+        };
         const voucher = await this.prisma.paymentVoucher.findUnique({
             where: { id, deletedAt: null },
             include: {
@@ -62,12 +71,32 @@ let PaymentsService = class PaymentsService {
                         bankTransfers: true,
                     },
                 },
-                workflow: { include: { steps: { orderBy: { stepNumber: 'asc' } } } },
+                workflow: {
+                    include: {
+                        steps: {
+                            orderBy: { stepNumber: 'asc' },
+                            include: {
+                                digitalSignature: { include: { user: userWithRoles } },
+                            },
+                        },
+                        actions: {
+                            include: { actor: userWithRoles },
+                            orderBy: { actionAt: 'asc' },
+                        },
+                    },
+                },
             },
         });
         if (!voucher)
             throw new common_1.NotFoundException(`Payment Voucher ${id} not found`);
-        return voucher;
+        let createdBy = null;
+        if (voucher.createdById) {
+            createdBy = await this.prisma.user.findUnique({
+                where: { id: voucher.createdById },
+                ...userWithRoles,
+            });
+        }
+        return { ...voucher, createdBy };
     }
     async createVoucher(dto, user) {
         const grant = await this.prisma.grant.findUnique({ where: { id: dto.grantId } });
@@ -117,7 +146,7 @@ let PaymentsService = class PaymentsService {
         const voucher = await this.findOneVoucher(id);
         if (!voucher.workflowInstanceId)
             throw new common_1.BadRequestException('No active workflow');
-        const instance = await this.workflowSvc.processAction(voucher.workflowInstanceId, 'APPROVE', user.id, comment);
+        const instance = await this.workflowSvc.processAction(voucher.workflowInstanceId, 'APPROVE', user.id, comment, { ipAddress: user.ipAddress, userAgent: user.userAgent });
         if (instance.status === 'APPROVED') {
             await this.prisma.paymentVoucher.update({ where: { id }, data: { status: client_1.DocumentStatus.APPROVED } });
         }

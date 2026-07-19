@@ -14,14 +14,14 @@ export declare class NotificationsService {
     private readonly prisma;
     constructor(prisma: PrismaService);
     send(dto: SendNotificationDto): Promise<{
+        userId: string;
         id: string;
         createdAt: Date;
-        userId: string;
         type: import(".prisma/client").$Enums.NotificationType;
-        documentType: string | null;
-        documentId: string | null;
         title: string;
         message: string;
+        documentType: string | null;
+        documentId: string | null;
         actionUrl: string | null;
         isRead: boolean;
         readAt: Date | null;
@@ -29,14 +29,14 @@ export declare class NotificationsService {
         sentAt: Date | null;
     }>;
     sendToMany(userIds: string[], dto: Omit<SendNotificationDto, 'userId'>): Promise<{
+        userId: string;
         id: string;
         createdAt: Date;
-        userId: string;
         type: import(".prisma/client").$Enums.NotificationType;
-        documentType: string | null;
-        documentId: string | null;
         title: string;
         message: string;
+        documentType: string | null;
+        documentId: string | null;
         actionUrl: string | null;
         isRead: boolean;
         readAt: Date | null;
@@ -45,14 +45,14 @@ export declare class NotificationsService {
     }[]>;
     findForUser(userId: string, query: any): Promise<{
         data: {
+            userId: string;
             id: string;
             createdAt: Date;
-            userId: string;
             type: import(".prisma/client").$Enums.NotificationType;
-            documentType: string | null;
-            documentId: string | null;
             title: string;
             message: string;
+            documentType: string | null;
+            documentId: string | null;
             actionUrl: string | null;
             isRead: boolean;
             readAt: Date | null;
@@ -67,14 +67,14 @@ export declare class NotificationsService {
         };
     }>;
     markRead(id: string, userId: string): Promise<{
+        userId: string;
         id: string;
         createdAt: Date;
-        userId: string;
         type: import(".prisma/client").$Enums.NotificationType;
-        documentType: string | null;
-        documentId: string | null;
         title: string;
         message: string;
+        documentType: string | null;
+        documentId: string | null;
         actionUrl: string | null;
         isRead: boolean;
         readAt: Date | null;

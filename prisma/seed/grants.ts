@@ -166,7 +166,7 @@ export async function seedGrants() {
 
   // ── Sample Project for Grant 1 (1:1 mirror of grant) ─────────
   const project1 = await prisma.project.upsert({
-    where: { grantId: grant1.id },
+    where: { code: grant1.code },
     update: {
       code: grant1.code,
       name: grant1.name,
@@ -260,28 +260,32 @@ export async function seedGrants() {
   ];
 
   for (const activity of activities) {
-    await prisma.activity.upsert({
-      where: {
-        projectId_code: {
-          projectId: project1.id,
-          code: activity.code,
-        },
-      },
-      update: {},
-      create: {
-        ...activity,
-        projectId: project1.id,
-        responsibleUserId: 'user-project-mgr',
-        createdById: 'user-admin',
-      },
+    const existingActivity = await prisma.activity.findFirst({
+      where: { projectId: project1.id, code: activity.code, deletedAt: null },
     });
+
+    if (existingActivity) {
+      await prisma.activity.update({
+        where: { id: existingActivity.id },
+        data: activity,
+      });
+    } else {
+      await prisma.activity.create({
+        data: {
+          ...activity,
+          projectId: project1.id,
+          responsibleUserId: 'user-project-mgr',
+          createdById: 'user-admin',
+        },
+      });
+    }
   }
   console.log(`  ✓ ${activities.length} activities for ${project1.code}`);
 
   // ── Auto-create mirrored projects for Grant 2 & 3 ─────────────
   for (const grant of [grant2, grant3]) {
     await prisma.project.upsert({
-      where: { grantId: grant.id },
+      where: { code: grant.code },
       update: {
         code: grant.code,
         name: grant.name,

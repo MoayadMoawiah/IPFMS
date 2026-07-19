@@ -47,6 +47,16 @@ export class PaymentsService {
   }
 
   async findOneVoucher(id: string) {
+    const userWithRoles = {
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        roles: { include: { role: { select: { id: true, name: true } } } },
+      },
+    };
+
     const voucher = await this.prisma.paymentVoucher.findUnique({
       where: { id, deletedAt: null },
       include: {
@@ -58,11 +68,33 @@ export class PaymentsService {
             bankTransfers: true,
           },
         },
-        workflow: { include: { steps: { orderBy: { stepNumber: 'asc' } } } },
+        workflow: {
+          include: {
+            steps: {
+              orderBy: { stepNumber: 'asc' },
+              include: {
+                digitalSignature: { include: { user: userWithRoles } },
+              },
+            },
+            actions: {
+              include: { actor: userWithRoles },
+              orderBy: { actionAt: 'asc' },
+            },
+          },
+        },
       },
     });
     if (!voucher) throw new NotFoundException(`Payment Voucher ${id} not found`);
-    return voucher;
+
+    let createdBy = null;
+    if (voucher.createdById) {
+      createdBy = await this.prisma.user.findUnique({
+        where: { id: voucher.createdById },
+        ...userWithRoles,
+      });
+    }
+
+    return { ...voucher, createdBy };
   }
 
   async createVoucher(dto: any, user: UserPayload) {
@@ -119,7 +151,13 @@ export class PaymentsService {
     const voucher = await this.findOneVoucher(id);
     if (!voucher.workflowInstanceId) throw new BadRequestException('No active workflow');
 
-    const instance = await this.workflowSvc.processAction(voucher.workflowInstanceId, 'APPROVE' as any, user.id, comment);
+    const instance = await this.workflowSvc.processAction(
+      voucher.workflowInstanceId,
+      'APPROVE' as any,
+      user.id,
+      comment,
+      { ipAddress: user.ipAddress, userAgent: user.userAgent },
+    );
 
     if (instance.status === 'APPROVED') {
       await this.prisma.paymentVoucher.update({ where: { id }, data: { status: DocumentStatus.APPROVED } });

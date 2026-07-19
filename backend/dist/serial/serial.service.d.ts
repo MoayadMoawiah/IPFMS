@@ -10,21 +10,21 @@ export declare class SerialService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        format: string;
         grantCode: string;
         docType: import(".prisma/client").$Enums.ProcurementDocType;
         lastNumber: number;
         prefix: string | null;
-        format: string;
     }[]>;
     getAllSequences(): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        format: string;
         grantCode: string;
         docType: import(".prisma/client").$Enums.ProcurementDocType;
         lastNumber: number;
         prefix: string | null;
-        format: string;
     }[]>;
     resetSequence(grantCode: string, docType: string): Promise<void>;
     private computeLockKey;

@@ -81,6 +81,18 @@ export function useSubmitPaymentVoucher() {
   });
 }
 
+export function useApprovePaymentVoucher() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, comment }: { id: string; comment?: string }) => api.approvePaymentVoucher(id, comment),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: [PV_KEY] });
+      qc.invalidateQueries({ queryKey: [PV_KEY, id] });
+      qc.invalidateQueries({ queryKey: ['workflow-pending'] });
+    },
+  });
+}
+
 // ── Bank Accounts ────────────────────────────────────────────────────────────
 
 export function useBankAccounts(query = {}) {

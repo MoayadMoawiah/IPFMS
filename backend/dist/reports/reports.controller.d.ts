@@ -17,42 +17,42 @@ export declare class ReportsController {
     finance(): Promise<{
         data: {
             paymentVouchers: {
+                currency: string;
+                exchangeRate: import(".prisma/client/runtime/library").Decimal;
                 id: string;
                 description: string;
                 createdAt: Date;
                 updatedAt: Date;
-                status: import(".prisma/client").$Enums.DocumentStatus;
                 deletedAt: Date | null;
+                createdById: string | null;
+                status: import(".prisma/client").$Enums.DocumentStatus;
                 serialNumber: string;
-                paymentRequestId: string | null;
                 grantId: string;
+                workflowInstanceId: string | null;
+                paymentRequestId: string | null;
                 payeeType: import(".prisma/client").$Enums.PayeeType;
                 payeeId: string | null;
                 payeeName: string;
                 paymentDate: Date;
-                currency: string;
                 amount: import(".prisma/client/runtime/library").Decimal;
-                exchangeRate: import(".prisma/client/runtime/library").Decimal;
                 baseAmount: import(".prisma/client/runtime/library").Decimal;
                 reference: string | null;
-                workflowInstanceId: string | null;
-                createdById: string | null;
             }[];
             draftJournalEntries: number;
             bankAccounts: {
+                currency: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                currency: string;
-                accountName: string;
+                isActive: boolean;
+                notes: string | null;
                 bankName: string;
+                accountName: string;
                 accountNumber: string;
                 iban: string | null;
                 swiftCode: string | null;
                 currentBalance: import(".prisma/client/runtime/library").Decimal;
                 glAccountId: string | null;
-                isActive: boolean;
-                notes: string | null;
             }[];
         };
     }>;
@@ -75,12 +75,12 @@ export declare class ReportsController {
         data: {
             available: number;
             utilizationPercent: number;
-            name: string;
             id: string;
-            totalBudget: import(".prisma/client/runtime/library").Decimal;
-            spentAmount: import(".prisma/client/runtime/library").Decimal;
-            committedAmount: import(".prisma/client/runtime/library").Decimal;
+            name: string;
             code: string;
+            totalBudget: import(".prisma/client/runtime/library").Decimal;
+            committedAmount: import(".prisma/client/runtime/library").Decimal;
+            spentAmount: import(".prisma/client/runtime/library").Decimal;
         }[];
     }>;
     grantStatement(grantId: string): Promise<{

@@ -37,14 +37,14 @@ export declare class AuditService {
                 lastName: string;
             } | null;
         } & {
+            userId: string | null;
             id: string;
             createdAt: Date;
-            userId: string | null;
-            ipAddress: string | null;
-            userAgent: string | null;
             module: string;
             action: import(".prisma/client").$Enums.AuditAction;
             resource: string;
+            ipAddress: string | null;
+            userAgent: string | null;
             userEmail: string | null;
             resourceId: string | null;
             oldValues: import(".prisma/client/runtime/library").JsonValue | null;
@@ -67,14 +67,14 @@ export declare class AuditService {
             lastName: string;
         } | null;
     } & {
+        userId: string | null;
         id: string;
         createdAt: Date;
-        userId: string | null;
-        ipAddress: string | null;
-        userAgent: string | null;
         module: string;
         action: import(".prisma/client").$Enums.AuditAction;
         resource: string;
+        ipAddress: string | null;
+        userAgent: string | null;
         userEmail: string | null;
         resourceId: string | null;
         oldValues: import(".prisma/client/runtime/library").JsonValue | null;

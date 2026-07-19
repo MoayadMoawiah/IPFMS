@@ -20,13 +20,16 @@ const goods_receipt_controller_1 = require("./goods-receipt/goods-receipt.contro
 const goods_receipt_service_1 = require("./goods-receipt/goods-receipt.service");
 const contracts_controller_1 = require("./contracts/contracts.controller");
 const contracts_service_1 = require("./contracts/contracts.service");
+const paf_controller_1 = require("./paf/paf.controller");
+const paf_service_1 = require("./paf/paf.service");
 const grants_module_1 = require("../grants/grants.module");
+const uploads_module_1 = require("../uploads/uploads.module");
 let ProcurementModule = class ProcurementModule {
 };
 exports.ProcurementModule = ProcurementModule;
 exports.ProcurementModule = ProcurementModule = __decorate([
     (0, common_1.Module)({
-        imports: [grants_module_1.GrantsModule],
+        imports: [grants_module_1.GrantsModule, uploads_module_1.UploadsModule],
         controllers: [
             requisitions_controller_1.RequisitionsController,
             vendors_controller_1.VendorsController,
@@ -34,6 +37,7 @@ exports.ProcurementModule = ProcurementModule = __decorate([
             purchase_orders_controller_1.PurchaseOrdersController,
             goods_receipt_controller_1.GoodsReceiptController,
             contracts_controller_1.ContractsController,
+            paf_controller_1.PafController,
         ],
         providers: [
             requisitions_service_1.RequisitionsService,
@@ -42,6 +46,7 @@ exports.ProcurementModule = ProcurementModule = __decorate([
             purchase_orders_service_1.PurchaseOrdersService,
             goods_receipt_service_1.GoodsReceiptService,
             contracts_service_1.ContractsService,
+            paf_service_1.PafService,
         ],
         exports: [purchase_orders_service_1.PurchaseOrdersService, goods_receipt_service_1.GoodsReceiptService],
     })

@@ -100,6 +100,54 @@
   }
   body {
     background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  .gaderon-print-doc {
+    font-size: 11pt;
+  }
+
+  .gaderon-print-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .gaderon-print-table th,
+  .gaderon-print-table td {
+    border: 1px solid #000;
+    padding: 4px 6px;
+    vertical-align: top;
+  }
+
+  .gaderon-print-table thead {
+    display: table-header-group;
+  }
+
+  .gaderon-print-table tr {
+    break-inside: avoid;
+  }
+
+  .print-sign-off,
+  .print-supplier {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-page-break-before {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  /* Ensure Tailwind hidden + print:block works for document print views */
+  .hidden.print\:block {
+    display: block !important;
   }
 }
 

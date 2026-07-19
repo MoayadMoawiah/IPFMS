@@ -35,7 +35,10 @@ let WorkflowController = class WorkflowController {
         return this.workflowService.getInstance(id);
     }
     processAction(id, dto, user) {
-        return this.workflowService.processAction(id, dto.action, user.id, dto.comment);
+        return this.workflowService.processAction(id, dto.action, user.id, dto.comment, {
+            ipAddress: user.ipAddress,
+            userAgent: user.userAgent,
+        });
     }
 };
 exports.WorkflowController = WorkflowController;

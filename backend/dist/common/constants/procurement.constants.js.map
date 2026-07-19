@@ -1,0 +1,1 @@
+{"version":3,"file":"procurement.constants.js","sourceRoot":"","sources":["../../../src/common/constants/procurement.constants.ts"],"names":[],"mappings":";;;AAIA,0DAEC;AANY,QAAA,kBAAkB,GAAG,IAAI,CAAC;AAIvC,SAAgB,uBAAuB,CAAC,oBAA4B;IAClE,OAAO,oBAAoB,GAAG,0BAAkB,CAAC,CAAC,CAAC,KAAK,CAAC,CAAC,CAAC,WAAW,CAAC;AACzE,CAAC"}

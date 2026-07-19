@@ -53,12 +53,11 @@ export function useWorkflowPendingTasks(query = {}) {
 export function useProcessWorkflowAction() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ instanceId, stepId, action, dto }: {
+    mutationFn: ({ instanceId, action, dto }: {
       instanceId: string;
-      stepId: string;
       action: string;
-      dto: Record<string, unknown>;
-    }) => api.processWorkflowAction(instanceId, stepId, action, dto),
+      dto?: Record<string, unknown>;
+    }) => api.processWorkflowAction(instanceId, action, dto),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['workflow-pending'] });
     },

@@ -30,6 +30,7 @@ import {
   ArrowLeftRight,
   BookOpen,
   ScrollText,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/hooks/use-sidebar";
@@ -64,6 +65,7 @@ function isChildNavActive(
 
 const navigation: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { title: "Pending Approvals", href: "/approvals", icon: ClipboardList },
   { title: "Grant Management", href: "/grants", icon: Bookmark },
   { title: "Activities", href: "/projects", icon: Activity },
   {

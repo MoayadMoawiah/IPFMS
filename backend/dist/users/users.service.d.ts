@@ -12,7 +12,12 @@ export declare class UsersService {
                 name: string;
                 displayName: string | null;
             }[];
+            department: {
+                id: string;
+                name: string;
+            } | null;
             id: string;
+            createdAt: Date;
             email: string;
             firstName: string;
             lastName: string;
@@ -21,11 +26,6 @@ export declare class UsersService {
             avatar: string | null;
             isActive: boolean;
             lastLoginAt: Date | null;
-            createdAt: Date;
-            department: {
-                id: string;
-                name: string;
-            } | null;
         }[];
         meta: {
             total: number;
@@ -38,14 +38,29 @@ export declare class UsersService {
         roles: {
             grantedAt: Date;
             id: string;
+            name: string;
+            displayName: string | null;
+            description: string | null;
+            isSystem: boolean;
             createdAt: Date;
             updatedAt: Date;
+        }[];
+        department: {
+            id: string;
             name: string;
             description: string | null;
-            displayName: string | null;
-            isSystem: boolean;
-        }[];
+            createdAt: Date;
+            updatedAt: Date;
+            organizationId: string;
+            isActive: boolean;
+            deletedAt: Date | null;
+            parentId: string | null;
+            code: string;
+            headUserId: string | null;
+        } | null;
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
         email: string;
         firstName: string;
         lastName: string;
@@ -54,24 +69,11 @@ export declare class UsersService {
         avatar: string | null;
         isActive: boolean;
         lastLoginAt: Date | null;
-        createdAt: Date;
-        updatedAt: Date;
-        department: {
-            id: string;
-            organizationId: string;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date | null;
-            parentId: string | null;
-            name: string;
-            code: string;
-            description: string | null;
-            headUserId: string | null;
-        } | null;
     }>;
     create(dto: any): Promise<{
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
         email: string;
         passwordHash: string;
         firstName: string;
@@ -86,22 +88,35 @@ export declare class UsersService {
         lastLoginAt: Date | null;
         lastLoginIp: string | null;
         refreshTokenHash: string | null;
-        createdAt: Date;
-        updatedAt: Date;
         deletedAt: Date | null;
     }>;
     update(id: string, dto: UpdateUserDto): Promise<{
         roles: {
             grantedAt: Date;
             id: string;
+            name: string;
+            displayName: string | null;
+            description: string | null;
+            isSystem: boolean;
             createdAt: Date;
             updatedAt: Date;
+        }[];
+        department: {
+            id: string;
             name: string;
             description: string | null;
-            displayName: string | null;
-            isSystem: boolean;
-        }[];
+            createdAt: Date;
+            updatedAt: Date;
+            organizationId: string;
+            isActive: boolean;
+            deletedAt: Date | null;
+            parentId: string | null;
+            code: string;
+            headUserId: string | null;
+        } | null;
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
         email: string;
         firstName: string;
         lastName: string;
@@ -110,24 +125,11 @@ export declare class UsersService {
         avatar: string | null;
         isActive: boolean;
         lastLoginAt: Date | null;
-        createdAt: Date;
-        updatedAt: Date;
-        department: {
-            id: string;
-            organizationId: string;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date | null;
-            parentId: string | null;
-            name: string;
-            code: string;
-            description: string | null;
-            headUserId: string | null;
-        } | null;
     }>;
     activate(id: string): Promise<{
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
         email: string;
         passwordHash: string;
         firstName: string;
@@ -142,12 +144,12 @@ export declare class UsersService {
         lastLoginAt: Date | null;
         lastLoginIp: string | null;
         refreshTokenHash: string | null;
-        createdAt: Date;
-        updatedAt: Date;
         deletedAt: Date | null;
     }>;
     deactivate(id: string): Promise<{
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
         email: string;
         passwordHash: string;
         firstName: string;
@@ -162,8 +164,6 @@ export declare class UsersService {
         lastLoginAt: Date | null;
         lastLoginIp: string | null;
         refreshTokenHash: string | null;
-        createdAt: Date;
-        updatedAt: Date;
         deletedAt: Date | null;
     }>;
     softDelete(id: string, actorId?: string): Promise<void>;

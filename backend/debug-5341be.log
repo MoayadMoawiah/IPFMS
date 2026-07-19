@@ -1,0 +1,2 @@
+{"sessionId":"5341be","location":"auth.controller.ts:login","message":"login request received by backend","data":{"emailDomain":"gaderon.org","origin":"http://localhost:3000"},"timestamp":1784017299012,"hypothesisId":"H1-H3"}
+{"sessionId":"5341be","location":"auth.controller.ts:login","message":"login request received by backend","data":{"emailDomain":"gaderon.org","origin":"http://localhost:3000"},"timestamp":1784017321427,"hypothesisId":"H1-H3"}

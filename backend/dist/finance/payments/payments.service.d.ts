@@ -20,23 +20,23 @@ export declare class PaymentsService {
             currency: string;
             exchangeRate: Prisma.Decimal;
             id: string;
+            description: string;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
-            description: string;
             createdById: string | null;
             status: import(".prisma/client").$Enums.DocumentStatus;
+            serialNumber: string;
             grantId: string;
             workflowInstanceId: string | null;
-            serialNumber: string;
-            reference: string | null;
-            payeeName: string;
             paymentRequestId: string | null;
             payeeType: import(".prisma/client").$Enums.PayeeType;
             payeeId: string | null;
+            payeeName: string;
             paymentDate: Date;
             amount: Prisma.Decimal;
             baseAmount: Prisma.Decimal;
+            reference: string | null;
         })[];
         meta: {
             total: number;
@@ -46,14 +46,31 @@ export declare class PaymentsService {
         };
     }>;
     findOneVoucher(id: string): Promise<{
+        createdBy: {
+            id: string;
+            email: string;
+            firstName: string;
+            lastName: string;
+            roles: ({
+                role: {
+                    id: string;
+                    name: string;
+                };
+            } & {
+                userId: string;
+                roleId: string;
+                grantedBy: string | null;
+                grantedAt: Date;
+            })[];
+        } | null;
         grant: {
             currency: string;
             id: string;
+            name: string;
+            description: string | null;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
-            name: string;
-            description: string | null;
             code: string;
             startDate: Date;
             endDate: Date;
@@ -63,15 +80,15 @@ export declare class PaymentsService {
             donorId: string;
             fiscalYearId: string | null;
             totalBudget: Prisma.Decimal;
-            committedAmount: Prisma.Decimal;
-            spentAmount: Prisma.Decimal;
             signedDate: Date | null;
             objectives: string | null;
-            coverageArea: string | null;
-            targetBeneficiaries: number | null;
             reportingRequirements: string | null;
+            targetBeneficiaries: number | null;
             grantManagerId: string | null;
             projectCoordinatorId: string | null;
+            committedAmount: Prisma.Decimal;
+            spentAmount: Prisma.Decimal;
+            coverageArea: string | null;
         };
         paymentRequest: ({
             invoice: {
@@ -82,18 +99,18 @@ export declare class PaymentsService {
                 deletedAt: Date | null;
                 createdById: string | null;
                 status: import(".prisma/client").$Enums.InvoiceStatus;
-                notes: string | null;
-                dueDate: Date | null;
+                serialNumber: string;
                 grantId: string;
                 workflowInstanceId: string | null;
-                fileUrl: string | null;
-                serialNumber: string;
                 vendorId: string;
                 subtotal: Prisma.Decimal;
                 taxAmount: Prisma.Decimal;
                 totalAmount: Prisma.Decimal;
                 paidAmount: Prisma.Decimal;
+                notes: string | null;
                 poId: string;
+                dueDate: Date | null;
+                fileUrl: string | null;
                 invoiceNumber: string;
                 invoiceDate: Date;
                 isThreeWayMatched: boolean;
@@ -108,18 +125,50 @@ export declare class PaymentsService {
             deletedAt: Date | null;
             createdById: string | null;
             status: import(".prisma/client").$Enums.DocumentStatus;
-            notes: string | null;
+            serialNumber: string;
             grantId: string;
             workflowInstanceId: string | null;
-            serialNumber: string;
             totalAmount: Prisma.Decimal;
-            paymentMethod: import(".prisma/client").$Enums.PaymentMethod;
-            bankAccountId: string | null;
+            notes: string | null;
             invoiceId: string;
             requestDate: Date;
+            paymentMethod: import(".prisma/client").$Enums.PaymentMethod;
+            bankAccountId: string | null;
         }) | null;
         workflow: ({
-            steps: {
+            steps: ({
+                digitalSignature: ({
+                    user: {
+                        id: string;
+                        email: string;
+                        firstName: string;
+                        lastName: string;
+                        roles: ({
+                            role: {
+                                id: string;
+                                name: string;
+                            };
+                        } & {
+                            userId: string;
+                            roleId: string;
+                            grantedBy: string | null;
+                            grantedAt: Date;
+                        })[];
+                    };
+                } & {
+                    userId: string;
+                    id: string;
+                    createdAt: Date;
+                    action: string;
+                    ipAddress: string;
+                    userAgent: string;
+                    documentType: string;
+                    documentId: string;
+                    deviceFingerprint: string | null;
+                    signedAt: Date;
+                    certificate: string | null;
+                }) | null;
+            } & {
                 comment: string | null;
                 id: string;
                 createdAt: Date;
@@ -135,7 +184,35 @@ export declare class PaymentsService {
                 dueAt: Date | null;
                 digitalSignatureId: string | null;
                 instanceId: string;
-            }[];
+            })[];
+            actions: ({
+                actor: {
+                    id: string;
+                    email: string;
+                    firstName: string;
+                    lastName: string;
+                    roles: ({
+                        role: {
+                            id: string;
+                            name: string;
+                        };
+                    } & {
+                        userId: string;
+                        roleId: string;
+                        grantedBy: string | null;
+                        grantedAt: Date;
+                    })[];
+                };
+            } & {
+                comment: string | null;
+                id: string;
+                action: import(".prisma/client").$Enums.WorkflowAction;
+                digitalSignatureId: string | null;
+                instanceId: string;
+                actionAt: Date;
+                instanceStepId: string | null;
+                actorId: string;
+            })[];
         } & {
             id: string;
             createdAt: Date;
@@ -155,11 +232,11 @@ export declare class PaymentsService {
                 createdAt: Date;
                 updatedAt: Date;
                 status: import(".prisma/client").$Enums.ChequeStatus;
-                fileUrl: string | null;
                 serialNumber: string;
                 issuedAt: Date | null;
                 payeeName: string;
                 amount: Prisma.Decimal;
+                fileUrl: string | null;
                 bankAccountId: string;
                 chequeNumber: string;
                 chequeDate: Date;
@@ -176,11 +253,11 @@ export declare class PaymentsService {
                 updatedAt: Date;
                 status: import(".prisma/client").$Enums.BankTransferStatus;
                 completedAt: Date | null;
-                fileUrl: string | null;
                 serialNumber: string;
-                reference: string | null;
                 amount: Prisma.Decimal;
                 baseAmount: Prisma.Decimal;
+                reference: string | null;
+                fileUrl: string | null;
                 paymentId: string;
                 toBankAccount: string;
                 toBankName: string;
@@ -197,80 +274,79 @@ export declare class PaymentsService {
             updatedAt: Date;
             createdById: string | null;
             status: import(".prisma/client").$Enums.PaymentStatus;
-            journalEntryId: string | null;
-            reference: string | null;
             paymentDate: Date;
             amount: Prisma.Decimal;
             baseAmount: Prisma.Decimal;
+            reference: string | null;
+            journalEntryId: string | null;
             paymentMethod: import(".prisma/client").$Enums.PaymentMethod;
             bankAccountId: string | null;
             paymentVoucherId: string;
         })[];
-    } & {
         currency: string;
         exchangeRate: Prisma.Decimal;
         id: string;
+        description: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
-        description: string;
         createdById: string | null;
         status: import(".prisma/client").$Enums.DocumentStatus;
+        serialNumber: string;
         grantId: string;
         workflowInstanceId: string | null;
-        serialNumber: string;
-        reference: string | null;
-        payeeName: string;
         paymentRequestId: string | null;
         payeeType: import(".prisma/client").$Enums.PayeeType;
         payeeId: string | null;
+        payeeName: string;
         paymentDate: Date;
         amount: Prisma.Decimal;
         baseAmount: Prisma.Decimal;
+        reference: string | null;
     }>;
     createVoucher(dto: any, user: UserPayload): Promise<{
         currency: string;
         exchangeRate: Prisma.Decimal;
         id: string;
+        description: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
-        description: string;
         createdById: string | null;
         status: import(".prisma/client").$Enums.DocumentStatus;
+        serialNumber: string;
         grantId: string;
         workflowInstanceId: string | null;
-        serialNumber: string;
-        reference: string | null;
-        payeeName: string;
         paymentRequestId: string | null;
         payeeType: import(".prisma/client").$Enums.PayeeType;
         payeeId: string | null;
+        payeeName: string;
         paymentDate: Date;
         amount: Prisma.Decimal;
         baseAmount: Prisma.Decimal;
+        reference: string | null;
     }>;
     submitVoucher(id: string, user: UserPayload): Promise<{
         currency: string;
         exchangeRate: Prisma.Decimal;
         id: string;
+        description: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
-        description: string;
         createdById: string | null;
         status: import(".prisma/client").$Enums.DocumentStatus;
+        serialNumber: string;
         grantId: string;
         workflowInstanceId: string | null;
-        serialNumber: string;
-        reference: string | null;
-        payeeName: string;
         paymentRequestId: string | null;
         payeeType: import(".prisma/client").$Enums.PayeeType;
         payeeId: string | null;
+        payeeName: string;
         paymentDate: Date;
         amount: Prisma.Decimal;
         baseAmount: Prisma.Decimal;
+        reference: string | null;
     }>;
     approveVoucher(id: string, comment: string | undefined, user: UserPayload): Promise<{
         steps: {
@@ -310,11 +386,11 @@ export declare class PaymentsService {
         updatedAt: Date;
         createdById: string | null;
         status: import(".prisma/client").$Enums.PaymentStatus;
-        journalEntryId: string | null;
-        reference: string | null;
         paymentDate: Date;
         amount: Prisma.Decimal;
         baseAmount: Prisma.Decimal;
+        reference: string | null;
+        journalEntryId: string | null;
         paymentMethod: import(".prisma/client").$Enums.PaymentMethod;
         bankAccountId: string | null;
         paymentVoucherId: string;
@@ -323,8 +399,8 @@ export declare class PaymentsService {
         data: ({
             bankAccount: {
                 id: string;
-                accountName: string;
                 bankName: string;
+                accountName: string;
             };
         } & {
             currency: string;
@@ -332,11 +408,11 @@ export declare class PaymentsService {
             createdAt: Date;
             updatedAt: Date;
             status: import(".prisma/client").$Enums.ChequeStatus;
-            fileUrl: string | null;
             serialNumber: string;
             issuedAt: Date | null;
             payeeName: string;
             amount: Prisma.Decimal;
+            fileUrl: string | null;
             bankAccountId: string;
             chequeNumber: string;
             chequeDate: Date;
@@ -356,8 +432,8 @@ export declare class PaymentsService {
         data: ({
             fromBankAccount: {
                 id: string;
-                accountName: string;
                 bankName: string;
+                accountName: string;
             };
         } & {
             currency: string;
@@ -367,11 +443,11 @@ export declare class PaymentsService {
             updatedAt: Date;
             status: import(".prisma/client").$Enums.BankTransferStatus;
             completedAt: Date | null;
-            fileUrl: string | null;
             serialNumber: string;
-            reference: string | null;
             amount: Prisma.Decimal;
             baseAmount: Prisma.Decimal;
+            reference: string | null;
+            fileUrl: string | null;
             paymentId: string;
             toBankAccount: string;
             toBankName: string;
@@ -393,11 +469,11 @@ export declare class PaymentsService {
         createdAt: Date;
         updatedAt: Date;
         status: import(".prisma/client").$Enums.ChequeStatus;
-        fileUrl: string | null;
         serialNumber: string;
         issuedAt: Date | null;
         payeeName: string;
         amount: Prisma.Decimal;
+        fileUrl: string | null;
         bankAccountId: string;
         chequeNumber: string;
         chequeDate: Date;

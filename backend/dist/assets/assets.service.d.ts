@@ -22,15 +22,15 @@ export declare class AssetsService {
         } & {
             currency: string;
             id: string;
+            name: string;
+            description: string | null;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
-            name: string;
-            description: string | null;
             createdById: string | null;
             status: import(".prisma/client").$Enums.AssetStatus;
-            grantId: string | null;
             serialNumber: string;
+            grantId: string | null;
             warehouseId: string | null;
             categoryId: string;
             locationCode: string | null;
@@ -58,11 +58,11 @@ export declare class AssetsService {
         grant: {
             currency: string;
             id: string;
+            name: string;
+            description: string | null;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
-            name: string;
-            description: string | null;
             code: string;
             startDate: Date;
             endDate: Date;
@@ -72,21 +72,21 @@ export declare class AssetsService {
             donorId: string;
             fiscalYearId: string | null;
             totalBudget: Prisma.Decimal;
-            committedAmount: Prisma.Decimal;
-            spentAmount: Prisma.Decimal;
             signedDate: Date | null;
             objectives: string | null;
-            coverageArea: string | null;
-            targetBeneficiaries: number | null;
             reportingRequirements: string | null;
+            targetBeneficiaries: number | null;
             grantManagerId: string | null;
             projectCoordinatorId: string | null;
+            committedAmount: Prisma.Decimal;
+            spentAmount: Prisma.Decimal;
+            coverageArea: string | null;
         } | null;
         category: {
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             parentId: string | null;
             code: string;
             glAccountId: string | null;
@@ -97,12 +97,12 @@ export declare class AssetsService {
         };
         maintenance: {
             id: string;
+            description: string;
             createdAt: Date;
             updatedAt: Date;
-            description: string;
             status: string;
-            notes: string | null;
             vendorId: string | null;
+            notes: string | null;
             scheduledDate: Date;
             assetId: string;
             maintenanceType: import(".prisma/client").$Enums.MaintenanceType;
@@ -117,9 +117,9 @@ export declare class AssetsService {
             };
         } & {
             id: string;
-            departmentId: string | null;
             createdAt: Date;
             updatedAt: Date;
+            departmentId: string | null;
             notes: string | null;
             assignedDate: Date;
             returnDate: Date | null;
@@ -155,15 +155,15 @@ export declare class AssetsService {
     } & {
         currency: string;
         id: string;
+        name: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
-        name: string;
-        description: string | null;
         createdById: string | null;
         status: import(".prisma/client").$Enums.AssetStatus;
-        grantId: string | null;
         serialNumber: string;
+        grantId: string | null;
         warehouseId: string | null;
         categoryId: string;
         locationCode: string | null;
@@ -183,15 +183,15 @@ export declare class AssetsService {
     create(dto: any, user: UserPayload): Promise<{
         currency: string;
         id: string;
+        name: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
-        name: string;
-        description: string | null;
         createdById: string | null;
         status: import(".prisma/client").$Enums.AssetStatus;
-        grantId: string | null;
         serialNumber: string;
+        grantId: string | null;
         warehouseId: string | null;
         categoryId: string;
         locationCode: string | null;
@@ -210,9 +210,9 @@ export declare class AssetsService {
     }>;
     assign(assetId: string, dto: any, user: UserPayload): Promise<{
         id: string;
-        departmentId: string | null;
         createdAt: Date;
         updatedAt: Date;
+        departmentId: string | null;
         notes: string | null;
         assignedDate: Date;
         returnDate: Date | null;
@@ -236,9 +236,9 @@ export declare class AssetsService {
     }>;
     getCategories(): Promise<{
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         parentId: string | null;
         code: string;
         glAccountId: string | null;
@@ -249,9 +249,9 @@ export declare class AssetsService {
     }[]>;
     createCategory(dto: any): Promise<{
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         parentId: string | null;
         code: string;
         glAccountId: string | null;

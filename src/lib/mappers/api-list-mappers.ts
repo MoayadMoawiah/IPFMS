@@ -31,10 +31,32 @@ export function mapPurchaseOrderRow(po: Record<string, unknown>) {
   };
 }
 
+export function mapRfqRow(rfq: Record<string, unknown>) {
+  const grant = rfq.grant as { code?: string; name?: string } | undefined;
+  const pr = rfq.pr as { serialNumber?: string } | undefined;
+  const count = rfq._count as { vendors?: number; pafForms?: number } | undefined;
+  return {
+    id: rfq.id as string,
+    number: (rfq.serialNumber as string) ?? "—",
+    title: rfq.title as string,
+    grantName: grant?.code ?? grant?.name ?? "—",
+    prNumber: pr?.serialNumber,
+    deadline: rfq.submissionDeadline as string,
+    status: (rfq.status as string).toLowerCase(),
+    vendorCount: count?.vendors ?? 0,
+    pafCount: count?.pafForms ?? 0,
+    createdAt: rfq.createdAt as string,
+  };
+}
+
 export function mapPurchaseRequisitionRow(pr: Record<string, unknown>) {
   const grant = pr.grant as { code?: string } | undefined;
   const requestedBy = pr.requestedBy as
     | { firstName?: string; lastName?: string }
+    | undefined;
+  const approvalContext = pr.approvalContext as
+    | { waitingForRoleName?: string | null; waitingForStepName?: string | null }
+    | null
     | undefined;
   return {
     id: pr.id as string,
@@ -46,6 +68,7 @@ export function mapPurchaseRequisitionRow(pr: Record<string, unknown>) {
     currency: (pr.currency as string) ?? "USD",
     status: pr.status as string,
     createdAt: pr.createdAt as string,
+    waitingForRoleName: approvalContext?.waitingForRoleName ?? null,
     requester: requestedBy
       ? { firstName: requestedBy.firstName ?? "", lastName: requestedBy.lastName ?? "" }
       : undefined,

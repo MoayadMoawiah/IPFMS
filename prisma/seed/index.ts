@@ -22,7 +22,11 @@ async function main() {
     console.log('  finance@gaderon.org — Finance Manager');
     console.log('  procurement@gaderon.org — Procurement Manager');
     console.log('  projects@gaderon.org — Project Manager');
-    console.log('  auditor@gaderon.org — Internal Auditor\n');
+    console.log('  auditor@gaderon.org — Internal Auditor');
+    console.log('  depthead@gaderon.org — Department Head (PR step 1)');
+    console.log('  proc.officer@gaderon.org — Procurement Officer (PR step 2)');
+    console.log('  finance.officer@gaderon.org — Finance Officer (PR step 3)');
+    console.log('  director@gaderon.org — Country Director (PR step 4)\n');
   } catch (error) {
     console.error('❌ Seed failed:', error);
     throw error;

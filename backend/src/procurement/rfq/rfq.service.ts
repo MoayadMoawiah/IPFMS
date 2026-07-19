@@ -5,6 +5,7 @@ import { AuditService } from '../../audit/audit.service';
 import { UserPayload } from '../../common/decorators/current-user.decorator';
 import { buildPaginationResponse, parsePagination } from '../../common/dto/pagination.dto';
 import { Prisma } from '@prisma/client';
+import { resolveProcurementRoute } from '../../common/constants/procurement.constants';
 
 @Injectable()
 export class RfqService {
@@ -16,11 +17,12 @@ export class RfqService {
 
   async findAll(query: any) {
     const { page, limit } = parsePagination(query);
-    const { search, status, grantId } = query;
+    const { search, status, grantId, prId } = query;
     const where: any = {
       deletedAt: null,
       ...(status && { status }),
       ...(grantId && { grantId }),
+      ...(prId && { prId }),
       ...(search && {
         OR: [
           { serialNumber: { contains: search, mode: 'insensitive' } },
@@ -35,7 +37,7 @@ export class RfqService {
         include: {
           pr: { select: { id: true, serialNumber: true, title: true } },
           grant: { select: { id: true, code: true, name: true } },
-          _count: { select: { vendors: true } },
+          _count: { select: { vendors: true, pafForms: true } },
         },
         skip: (page - 1) * limit,
         take: limit,
@@ -65,6 +67,65 @@ export class RfqService {
     return rfq;
   }
 
+  private resolveSubmissionDeadline(requiredByDate: Date | null | undefined): Date {
+    const now = new Date();
+    if (requiredByDate && requiredByDate.getTime() > now.getTime()) {
+      return requiredByDate;
+    }
+    const deadline = new Date(now);
+    deadline.setDate(deadline.getDate() + 14);
+    return deadline;
+  }
+
+  async createDraftFromPr(prId: string, user: UserPayload) {
+    const pr = await this.prisma.purchaseRequisition.findUnique({
+      where: { id: prId, deletedAt: null },
+      include: { grant: true },
+    });
+    if (!pr) throw new NotFoundException('Purchase Requisition not found');
+    if (pr.status !== 'APPROVED') {
+      throw new BadRequestException('PR must be APPROVED to create RFQ');
+    }
+    if (resolveProcurementRoute(Number(pr.totalEstimatedAmount)) === 'DIRECT_PO') {
+      throw new BadRequestException('RFQ is only required for PRs over $1,001');
+    }
+
+    const existing = await this.prisma.rfq.findFirst({
+      where: { prId, deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (existing) return existing;
+
+    const serialNumber = await this.serialSvc.next(pr.grant.code, 'RFQ');
+    const submissionDeadline = this.resolveSubmissionDeadline(pr.requiredByDate);
+
+    const rfq = await this.prisma.rfq.create({
+      data: {
+        serialNumber,
+        prId,
+        grantId: pr.grantId,
+        title: pr.title,
+        description: pr.description,
+        submissionDeadline,
+        openingDate: null,
+        procurementMethodId: pr.procurementMethodId,
+        status: 'DRAFT',
+        createdById: user.id,
+      },
+    });
+
+    await this.auditSvc.log({
+      userId: user.id,
+      action: 'CREATE',
+      module: 'RFQ',
+      resource: 'Rfq',
+      resourceId: rfq.id,
+      newValues: { serialNumber, title: rfq.title, autoCreatedFromPr: prId },
+    });
+
+    return rfq;
+  }
+
   async create(dto: any, user: UserPayload) {
     const pr = await this.prisma.purchaseRequisition.findUnique({
       where: { id: dto.prId },
@@ -72,6 +133,9 @@ export class RfqService {
     });
     if (!pr) throw new NotFoundException('Purchase Requisition not found');
     if (pr.status !== 'APPROVED') throw new BadRequestException('PR must be APPROVED to create RFQ');
+    if (resolveProcurementRoute(Number(pr.totalEstimatedAmount)) === 'DIRECT_PO') {
+      throw new BadRequestException('RFQ is only required for PRs over $1,001');
+    }
 
     const serialNumber = await this.serialSvc.next(pr.grant.code, 'RFQ');
 
@@ -125,6 +189,24 @@ export class RfqService {
   }
 
   async updateVendorQuotation(rfqId: string, rfqVendorId: string, dto: any) {
+    const existing = await this.prisma.rfqVendor.findFirst({
+      where: { id: rfqVendorId, rfqId },
+    });
+    if (!existing) throw new NotFoundException('RFQ vendor not found');
+
+    const technicalScore = dto.technicalScore !== undefined
+      ? new Prisma.Decimal(dto.technicalScore)
+      : existing.technicalScore;
+    const committeeScore = dto.committeeScore !== undefined
+      ? new Prisma.Decimal(dto.committeeScore)
+      : existing.committeeScore;
+    const financialScore = dto.financialScore !== undefined
+      ? new Prisma.Decimal(dto.financialScore)
+      : existing.financialScore;
+    const totalScore = new Prisma.Decimal(
+      Number(technicalScore) + Number(committeeScore) + Number(financialScore),
+    );
+
     return this.prisma.rfqVendor.update({
       where: { id: rfqVendorId, rfqId },
       data: {
@@ -133,9 +215,14 @@ export class RfqService {
         currency: dto.currency,
         deliveryDays: dto.deliveryDays,
         warrantyTerms: dto.warrantyTerms,
-        technicalScore: dto.technicalScore ? new Prisma.Decimal(dto.technicalScore) : undefined,
-        committeeScore: dto.committeeScore ? new Prisma.Decimal(dto.committeeScore) : undefined,
+        technicalScore,
+        committeeScore,
+        financialScore,
+        totalScore,
         notes: dto.notes,
+      },
+      include: {
+        vendor: { select: { id: true, name: true, email: true } },
       },
     });
   }

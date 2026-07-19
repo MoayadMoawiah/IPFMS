@@ -39,6 +39,14 @@ export const ACTIVITY_DOCUMENT_LABELS = [
   "Other",
 ] as const;
 
+export const REQUISITION_DOCUMENT_LABELS = [
+  "Quotation",
+  "Specification",
+  "Justification Memo",
+  "Budget Approval",
+  "Other",
+] as const;
+
 export const ACCEPTED_DOCUMENT_TYPES = [
   "application/pdf",
   "application/msword",

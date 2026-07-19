@@ -53,15 +53,37 @@ let GoodsReceiptService = class GoodsReceiptService {
         return (0, pagination_dto_1.buildPaginationResponse)(data, total, page, limit);
     }
     async findOne(id) {
+        const userWithRoles = {
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                roles: { include: { role: { select: { id: true, name: true } } } },
+            },
+        };
         const grn = await this.prisma.goodsReceipt.findUnique({
             where: { id, deletedAt: null },
             include: {
-                po: { include: { items: true } },
+                po: { include: { items: true, vendor: { select: { id: true, name: true } } } },
                 grant: true,
                 warehouse: true,
-                receivedBy: { select: { firstName: true, lastName: true } },
+                receivedBy: userWithRoles,
                 items: { include: { poItem: true } },
-                workflow: { include: { steps: { orderBy: { stepNumber: 'asc' } } } },
+                workflow: {
+                    include: {
+                        steps: {
+                            orderBy: { stepNumber: 'asc' },
+                            include: {
+                                digitalSignature: { include: { user: userWithRoles } },
+                            },
+                        },
+                        actions: {
+                            include: { actor: userWithRoles },
+                            orderBy: { actionAt: 'asc' },
+                        },
+                    },
+                },
             },
         });
         if (!grn)
@@ -129,7 +151,7 @@ let GoodsReceiptService = class GoodsReceiptService {
         const grn = await this.findOne(id);
         if (!grn.workflowInstanceId)
             throw new common_1.BadRequestException('No active workflow');
-        const instance = await this.workflowSvc.processAction(grn.workflowInstanceId, 'APPROVE', user.id, comment);
+        const instance = await this.workflowSvc.processAction(grn.workflowInstanceId, 'APPROVE', user.id, comment, { ipAddress: user.ipAddress, userAgent: user.userAgent });
         if (instance.status === 'APPROVED') {
             for (const item of grn.items) {
                 await this.prisma.poItem.update({

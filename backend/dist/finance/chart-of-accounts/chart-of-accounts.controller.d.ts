@@ -5,23 +5,23 @@ export declare class ChartOfAccountsController {
     findAll(q: any): Promise<{
         data: ({
             parent: {
-                name: string;
                 id: string;
+                name: string;
                 code: string;
             } | null;
         } & {
-            name: string;
+            level: number;
             id: string;
+            name: string;
             description: string | null;
             createdAt: Date;
             updatedAt: Date;
-            deletedAt: Date | null;
-            isActive: boolean;
-            code: string;
-            parentId: string | null;
             arabicName: string | null;
+            isActive: boolean;
+            deletedAt: Date | null;
+            parentId: string | null;
+            code: string;
             accountType: import(".prisma/client").$Enums.AccountType;
-            level: number;
             isLeaf: boolean;
             normalBalance: import(".prisma/client").$Enums.NormalBalance;
         })[];
@@ -36,46 +36,46 @@ export declare class ChartOfAccountsController {
         data: any[];
     }>;
     create(dto: any): Promise<{
-        name: string;
+        level: number;
         id: string;
+        name: string;
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        deletedAt: Date | null;
-        isActive: boolean;
-        code: string;
-        parentId: string | null;
         arabicName: string | null;
+        isActive: boolean;
+        deletedAt: Date | null;
+        parentId: string | null;
+        code: string;
         accountType: import(".prisma/client").$Enums.AccountType;
-        level: number;
         isLeaf: boolean;
         normalBalance: import(".prisma/client").$Enums.NormalBalance;
     }>;
     findOne(id: string): Promise<{
         parent: {
-            name: string;
             id: string;
+            name: string;
             code: string;
         } | null;
         children: {
-            name: string;
             id: string;
+            name: string;
             code: string;
             isLeaf: boolean;
         }[];
     } & {
-        name: string;
+        level: number;
         id: string;
+        name: string;
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        deletedAt: Date | null;
-        isActive: boolean;
-        code: string;
-        parentId: string | null;
         arabicName: string | null;
+        isActive: boolean;
+        deletedAt: Date | null;
+        parentId: string | null;
+        code: string;
         accountType: import(".prisma/client").$Enums.AccountType;
-        level: number;
         isLeaf: boolean;
         normalBalance: import(".prisma/client").$Enums.NormalBalance;
     }>;
@@ -87,22 +87,22 @@ export declare class ChartOfAccountsController {
                 entryDate: Date;
             };
         } & {
+            currency: string;
+            exchangeRate: import(".prisma/client/runtime/library").Decimal;
             id: string;
             description: string | null;
             createdAt: Date;
             updatedAt: Date;
             grantId: string | null;
-            currency: string;
-            exchangeRate: import(".prisma/client/runtime/library").Decimal;
             activityId: string | null;
             budgetLineId: string | null;
             journalEntryId: string;
+            accountId: string;
             debitAmount: import(".prisma/client/runtime/library").Decimal;
             creditAmount: import(".prisma/client/runtime/library").Decimal;
             baseDebit: import(".prisma/client/runtime/library").Decimal;
             baseCredit: import(".prisma/client/runtime/library").Decimal;
             lineNumber: number;
-            accountId: string;
         })[];
         meta: {
             total: number;
@@ -112,18 +112,18 @@ export declare class ChartOfAccountsController {
         };
     }>;
     update(id: string, dto: any): Promise<{
-        name: string;
+        level: number;
         id: string;
+        name: string;
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        deletedAt: Date | null;
-        isActive: boolean;
-        code: string;
-        parentId: string | null;
         arabicName: string | null;
+        isActive: boolean;
+        deletedAt: Date | null;
+        parentId: string | null;
+        code: string;
         accountType: import(".prisma/client").$Enums.AccountType;
-        level: number;
         isLeaf: boolean;
         normalBalance: import(".prisma/client").$Enums.NormalBalance;
     }>;

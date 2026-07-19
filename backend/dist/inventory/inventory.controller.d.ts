@@ -5,34 +5,34 @@ export declare class InventoryController {
     constructor(svc: InventoryService);
     findAll(q: any): Promise<{
         data: ({
-            category: {
-                name: string;
-                id: string;
-            } | null;
             warehouse: {
-                name: string;
                 id: string;
+                name: string;
                 code: string;
             } | null;
+            category: {
+                id: string;
+                name: string;
+            } | null;
         } & {
-            name: string;
             id: string;
+            name: string;
             description: string | null;
             createdAt: Date;
             updatedAt: Date;
-            deletedAt: Date | null;
             isActive: boolean;
-            categoryId: string | null;
+            deletedAt: Date | null;
             warehouseId: string | null;
-            locationCode: string | null;
-            barcodeType: import(".prisma/client").$Enums.BarcodeType;
-            barcodeValue: string | null;
-            sku: string;
             unit: string;
+            totalValue: import(".prisma/client/runtime/library").Decimal;
+            categoryId: string | null;
+            sku: string;
             reorderLevel: import(".prisma/client/runtime/library").Decimal;
             currentStock: import(".prisma/client/runtime/library").Decimal;
             unitCost: import(".prisma/client/runtime/library").Decimal;
-            totalValue: import(".prisma/client/runtime/library").Decimal;
+            locationCode: string | null;
+            barcodeType: import(".prisma/client").$Enums.BarcodeType;
+            barcodeValue: string | null;
         })[];
         meta: {
             total: number;
@@ -42,101 +42,101 @@ export declare class InventoryController {
         };
     }>;
     create(dto: any): Promise<{
-        name: string;
         id: string;
+        name: string;
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        deletedAt: Date | null;
         isActive: boolean;
-        categoryId: string | null;
+        deletedAt: Date | null;
         warehouseId: string | null;
-        locationCode: string | null;
-        barcodeType: import(".prisma/client").$Enums.BarcodeType;
-        barcodeValue: string | null;
-        sku: string;
         unit: string;
+        totalValue: import(".prisma/client/runtime/library").Decimal;
+        categoryId: string | null;
+        sku: string;
         reorderLevel: import(".prisma/client/runtime/library").Decimal;
         currentStock: import(".prisma/client/runtime/library").Decimal;
         unitCost: import(".prisma/client/runtime/library").Decimal;
-        totalValue: import(".prisma/client/runtime/library").Decimal;
+        locationCode: string | null;
+        barcodeType: import(".prisma/client").$Enums.BarcodeType;
+        barcodeValue: string | null;
     }>;
     lowStock(): Promise<({
         warehouse: {
             name: string;
         } | null;
     } & {
-        name: string;
         id: string;
+        name: string;
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        deletedAt: Date | null;
         isActive: boolean;
-        categoryId: string | null;
+        deletedAt: Date | null;
         warehouseId: string | null;
-        locationCode: string | null;
-        barcodeType: import(".prisma/client").$Enums.BarcodeType;
-        barcodeValue: string | null;
-        sku: string;
         unit: string;
+        totalValue: import(".prisma/client/runtime/library").Decimal;
+        categoryId: string | null;
+        sku: string;
         reorderLevel: import(".prisma/client/runtime/library").Decimal;
         currentStock: import(".prisma/client/runtime/library").Decimal;
         unitCost: import(".prisma/client/runtime/library").Decimal;
-        totalValue: import(".prisma/client/runtime/library").Decimal;
+        locationCode: string | null;
+        barcodeType: import(".prisma/client").$Enums.BarcodeType;
+        barcodeValue: string | null;
     })[]>;
     findOne(id: string): Promise<{
-        category: {
-            name: string;
+        warehouse: {
             id: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            isActive: boolean;
+            deletedAt: Date | null;
+            code: string;
+            notes: string | null;
+            address: string | null;
+            managerId: string | null;
+        } | null;
+        category: {
+            id: string;
+            name: string;
             description: string | null;
             createdAt: Date;
             updatedAt: Date;
-            code: string;
             parentId: string | null;
-        } | null;
-        warehouse: {
-            name: string;
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date | null;
-            isActive: boolean;
-            notes: string | null;
             code: string;
-            address: string | null;
-            managerId: string | null;
         } | null;
         batches: {
             id: string;
             createdAt: Date;
             updatedAt: Date;
             notes: string | null;
+            quantity: import(".prisma/client/runtime/library").Decimal;
+            expiryDate: Date | null;
             receivedDate: Date;
             itemId: string;
             batchNumber: string;
-            expiryDate: Date | null;
-            quantity: import(".prisma/client/runtime/library").Decimal;
         }[];
     } & {
-        name: string;
         id: string;
+        name: string;
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        deletedAt: Date | null;
         isActive: boolean;
-        categoryId: string | null;
+        deletedAt: Date | null;
         warehouseId: string | null;
-        locationCode: string | null;
-        barcodeType: import(".prisma/client").$Enums.BarcodeType;
-        barcodeValue: string | null;
-        sku: string;
         unit: string;
+        totalValue: import(".prisma/client/runtime/library").Decimal;
+        categoryId: string | null;
+        sku: string;
         reorderLevel: import(".prisma/client/runtime/library").Decimal;
         currentStock: import(".prisma/client/runtime/library").Decimal;
         unitCost: import(".prisma/client/runtime/library").Decimal;
-        totalValue: import(".prisma/client/runtime/library").Decimal;
+        locationCode: string | null;
+        barcodeType: import(".prisma/client").$Enums.BarcodeType;
+        barcodeValue: string | null;
     }>;
     movements(id: string, q: any): Promise<{
         data: ({
@@ -146,14 +146,14 @@ export declare class InventoryController {
         } & {
             id: string;
             createdAt: Date;
-            grantId: string | null;
-            reference: string | null;
             createdById: string | null;
+            grantId: string | null;
             notes: string | null;
             warehouseId: string;
+            reference: string | null;
+            quantity: import(".prisma/client/runtime/library").Decimal;
             unitCost: import(".prisma/client/runtime/library").Decimal;
             itemId: string;
-            quantity: import(".prisma/client/runtime/library").Decimal;
             movementType: import(".prisma/client").$Enums.MovementType;
             totalCost: import(".prisma/client/runtime/library").Decimal;
             balanceAfter: import(".prisma/client/runtime/library").Decimal;
@@ -168,83 +168,83 @@ export declare class InventoryController {
         };
     }>;
     issue(id: string, dto: any, user: UserPayload): Promise<{
-        category: {
-            name: string;
+        warehouse: {
             id: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            isActive: boolean;
+            deletedAt: Date | null;
+            code: string;
+            notes: string | null;
+            address: string | null;
+            managerId: string | null;
+        } | null;
+        category: {
+            id: string;
+            name: string;
             description: string | null;
             createdAt: Date;
             updatedAt: Date;
-            code: string;
             parentId: string | null;
-        } | null;
-        warehouse: {
-            name: string;
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date | null;
-            isActive: boolean;
-            notes: string | null;
             code: string;
-            address: string | null;
-            managerId: string | null;
         } | null;
         batches: {
             id: string;
             createdAt: Date;
             updatedAt: Date;
             notes: string | null;
+            quantity: import(".prisma/client/runtime/library").Decimal;
+            expiryDate: Date | null;
             receivedDate: Date;
             itemId: string;
             batchNumber: string;
-            expiryDate: Date | null;
-            quantity: import(".prisma/client/runtime/library").Decimal;
         }[];
     } & {
-        name: string;
         id: string;
+        name: string;
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        deletedAt: Date | null;
         isActive: boolean;
-        categoryId: string | null;
+        deletedAt: Date | null;
         warehouseId: string | null;
-        locationCode: string | null;
-        barcodeType: import(".prisma/client").$Enums.BarcodeType;
-        barcodeValue: string | null;
-        sku: string;
         unit: string;
+        totalValue: import(".prisma/client/runtime/library").Decimal;
+        categoryId: string | null;
+        sku: string;
         reorderLevel: import(".prisma/client/runtime/library").Decimal;
         currentStock: import(".prisma/client/runtime/library").Decimal;
         unitCost: import(".prisma/client/runtime/library").Decimal;
-        totalValue: import(".prisma/client/runtime/library").Decimal;
+        locationCode: string | null;
+        barcodeType: import(".prisma/client").$Enums.BarcodeType;
+        barcodeValue: string | null;
     }>;
     warehouses(q: any): Promise<({
         _count: {
             inventoryItems: number;
         };
     } & {
-        name: string;
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
-        deletedAt: Date | null;
         isActive: boolean;
-        notes: string | null;
+        deletedAt: Date | null;
         code: string;
+        notes: string | null;
         address: string | null;
         managerId: string | null;
     })[]>;
     createWarehouse(dto: any): Promise<{
-        name: string;
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
-        deletedAt: Date | null;
         isActive: boolean;
-        notes: string | null;
+        deletedAt: Date | null;
         code: string;
+        notes: string | null;
         address: string | null;
         managerId: string | null;
     }>;
@@ -253,23 +253,23 @@ export declare class InventoryController {
             name: string;
         } | null;
     } & {
-        name: string;
         id: string;
+        name: string;
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        deletedAt: Date | null;
         isActive: boolean;
-        categoryId: string | null;
+        deletedAt: Date | null;
         warehouseId: string | null;
-        locationCode: string | null;
-        barcodeType: import(".prisma/client").$Enums.BarcodeType;
-        barcodeValue: string | null;
-        sku: string;
         unit: string;
+        totalValue: import(".prisma/client/runtime/library").Decimal;
+        categoryId: string | null;
+        sku: string;
         reorderLevel: import(".prisma/client/runtime/library").Decimal;
         currentStock: import(".prisma/client/runtime/library").Decimal;
         unitCost: import(".prisma/client/runtime/library").Decimal;
-        totalValue: import(".prisma/client/runtime/library").Decimal;
+        locationCode: string | null;
+        barcodeType: import(".prisma/client").$Enums.BarcodeType;
+        barcodeValue: string | null;
     })[]>;
 }

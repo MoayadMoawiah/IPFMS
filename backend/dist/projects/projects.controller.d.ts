@@ -8,14 +8,14 @@ export declare class ProjectsController {
         data: ({
             project: {
                 id: string;
-                code: string;
-                name: string;
                 grant: {
                     id: string;
-                    code: string;
-                    name: string;
                     currency: string;
+                    name: string;
+                    code: string;
                 };
+                name: string;
+                code: string;
             };
             responsibleUser: {
                 id: string;
@@ -25,21 +25,21 @@ export declare class ProjectsController {
             } | null;
         } & {
             id: string;
-            projectId: string;
-            code: string;
-            name: string;
-            description: string | null;
-            startDate: Date;
-            endDate: Date;
-            plannedBudget: import(".prisma/client/runtime/library").Decimal;
-            actualSpent: import(".prisma/client/runtime/library").Decimal;
-            progressPercent: import(".prisma/client/runtime/library").Decimal;
             status: import(".prisma/client").$Enums.ActivityStatus;
-            responsibleUserId: string | null;
             createdById: string | null;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
+            name: string;
+            code: string;
+            startDate: Date;
+            endDate: Date;
+            description: string | null;
+            projectId: string;
+            plannedBudget: import(".prisma/client/runtime/library").Decimal;
+            actualSpent: import(".prisma/client/runtime/library").Decimal;
+            progressPercent: import(".prisma/client/runtime/library").Decimal;
+            responsibleUserId: string | null;
         })[];
         meta: {
             total: number;
@@ -51,8 +51,8 @@ export declare class ProjectsController {
     createActivity(dto: CreateActivityDto, user: UserPayload): Promise<{
         project: {
             id: string;
-            code: string;
             name: string;
+            code: string;
         };
         responsibleUser: {
             id: string;
@@ -61,49 +61,75 @@ export declare class ProjectsController {
         } | null;
     } & {
         id: string;
-        projectId: string;
-        code: string;
-        name: string;
-        description: string | null;
-        startDate: Date;
-        endDate: Date;
-        plannedBudget: import(".prisma/client/runtime/library").Decimal;
-        actualSpent: import(".prisma/client/runtime/library").Decimal;
-        progressPercent: import(".prisma/client/runtime/library").Decimal;
         status: import(".prisma/client").$Enums.ActivityStatus;
-        responsibleUserId: string | null;
         createdById: string | null;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
+        name: string;
+        code: string;
+        startDate: Date;
+        endDate: Date;
+        description: string | null;
+        projectId: string;
+        plannedBudget: import(".prisma/client/runtime/library").Decimal;
+        actualSpent: import(".prisma/client/runtime/library").Decimal;
+        progressPercent: import(".prisma/client/runtime/library").Decimal;
+        responsibleUserId: string | null;
     }>;
     findActivity(id: string): Promise<{
+        budgetLines: ({
+            budgetLine: {
+                id: string;
+                grantId: string;
+                currency: string;
+                notes: string | null;
+                createdById: string | null;
+                createdAt: Date;
+                updatedAt: Date;
+                deletedAt: Date | null;
+                code: string;
+                totalBudget: import(".prisma/client/runtime/library").Decimal;
+                committedAmount: import(".prisma/client/runtime/library").Decimal;
+                spentAmount: import(".prisma/client/runtime/library").Decimal;
+                description: string;
+                activityId: string | null;
+                category: import(".prisma/client").$Enums.BudgetCategory;
+            };
+        } & {
+            id: string;
+            budgetLineId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            activityId: string;
+            allocatedAmount: import(".prisma/client/runtime/library").Decimal;
+        })[];
         project: {
             grant: {
                 id: string;
-                code: string;
-                name: string;
                 currency: string;
+                name: string;
+                code: string;
                 totalBudget: import(".prisma/client/runtime/library").Decimal;
             };
         } & {
             id: string;
-            code: string;
-            name: string;
-            description: string | null;
-            startDate: Date;
-            endDate: Date;
-            progressPercent: import(".prisma/client/runtime/library").Decimal;
+            grantId: string;
             status: import(".prisma/client").$Enums.ProjectStatus;
             createdById: string | null;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
-            grantId: string;
+            name: string;
+            code: string;
+            startDate: Date;
+            endDate: Date;
+            description: string | null;
+            targetBeneficiaries: number | null;
+            progressPercent: import(".prisma/client/runtime/library").Decimal;
             budget: import(".prisma/client/runtime/library").Decimal;
             committedBudget: import(".prisma/client/runtime/library").Decimal;
             spentBudget: import(".prisma/client/runtime/library").Decimal;
-            targetBeneficiaries: number | null;
             projectManagerId: string | null;
         };
         responsibleUser: {
@@ -112,55 +138,29 @@ export declare class ProjectsController {
             firstName: string;
             lastName: string;
         } | null;
-        budgetLines: ({
-            budgetLine: {
-                id: string;
-                code: string;
-                description: string;
-                createdById: string | null;
-                createdAt: Date;
-                updatedAt: Date;
-                deletedAt: Date | null;
-                grantId: string;
-                currency: string;
-                totalBudget: import(".prisma/client/runtime/library").Decimal;
-                committedAmount: import(".prisma/client/runtime/library").Decimal;
-                spentAmount: import(".prisma/client/runtime/library").Decimal;
-                activityId: string | null;
-                category: import(".prisma/client").$Enums.BudgetCategory;
-                notes: string | null;
-            };
-        } & {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            activityId: string;
-            budgetLineId: string;
-            allocatedAmount: import(".prisma/client/runtime/library").Decimal;
-        })[];
     } & {
         id: string;
-        projectId: string;
-        code: string;
-        name: string;
-        description: string | null;
-        startDate: Date;
-        endDate: Date;
-        plannedBudget: import(".prisma/client/runtime/library").Decimal;
-        actualSpent: import(".prisma/client/runtime/library").Decimal;
-        progressPercent: import(".prisma/client/runtime/library").Decimal;
         status: import(".prisma/client").$Enums.ActivityStatus;
-        responsibleUserId: string | null;
         createdById: string | null;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
+        name: string;
+        code: string;
+        startDate: Date;
+        endDate: Date;
+        description: string | null;
+        projectId: string;
+        plannedBudget: import(".prisma/client/runtime/library").Decimal;
+        actualSpent: import(".prisma/client/runtime/library").Decimal;
+        progressPercent: import(".prisma/client/runtime/library").Decimal;
+        responsibleUserId: string | null;
     }>;
     updateActivity(id: string, dto: UpdateActivityDto, user: UserPayload): Promise<{
         project: {
             id: string;
-            code: string;
             name: string;
+            code: string;
         };
         responsibleUser: {
             id: string;
@@ -169,39 +169,39 @@ export declare class ProjectsController {
         } | null;
     } & {
         id: string;
-        projectId: string;
-        code: string;
-        name: string;
-        description: string | null;
-        startDate: Date;
-        endDate: Date;
-        plannedBudget: import(".prisma/client/runtime/library").Decimal;
-        actualSpent: import(".prisma/client/runtime/library").Decimal;
-        progressPercent: import(".prisma/client/runtime/library").Decimal;
         status: import(".prisma/client").$Enums.ActivityStatus;
-        responsibleUserId: string | null;
         createdById: string | null;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
+        name: string;
+        code: string;
+        startDate: Date;
+        endDate: Date;
+        description: string | null;
+        projectId: string;
+        plannedBudget: import(".prisma/client/runtime/library").Decimal;
+        actualSpent: import(".prisma/client/runtime/library").Decimal;
+        progressPercent: import(".prisma/client/runtime/library").Decimal;
+        responsibleUserId: string | null;
     }>;
     updateActivityProgress(id: string, dto: UpdateActivityProgressDto, user: UserPayload): Promise<{
         id: string;
-        projectId: string;
-        code: string;
-        name: string;
-        description: string | null;
-        startDate: Date;
-        endDate: Date;
-        plannedBudget: import(".prisma/client/runtime/library").Decimal;
-        actualSpent: import(".prisma/client/runtime/library").Decimal;
-        progressPercent: import(".prisma/client/runtime/library").Decimal;
         status: import(".prisma/client").$Enums.ActivityStatus;
-        responsibleUserId: string | null;
         createdById: string | null;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
+        name: string;
+        code: string;
+        startDate: Date;
+        endDate: Date;
+        description: string | null;
+        projectId: string;
+        plannedBudget: import(".prisma/client/runtime/library").Decimal;
+        actualSpent: import(".prisma/client/runtime/library").Decimal;
+        progressPercent: import(".prisma/client/runtime/library").Decimal;
+        responsibleUserId: string | null;
     }>;
     removeActivity(id: string, user: UserPayload): Promise<void>;
     uploadActivityDocuments(id: string, files: Express.Multer.File[], labelsJson: string, user: UserPayload): Promise<any[]>;
@@ -216,45 +216,45 @@ export declare class ProjectsController {
         createdAt: Date;
         deletedAt: Date | null;
         documentType: string;
+        fileUrl: string;
         documentId: string;
         fileName: string;
         originalName: string;
         fileSize: number;
         mimeType: string;
-        fileUrl: string;
         storageKey: string;
         uploadedById: string;
     })[]>;
     deleteActivityDocument(id: string, attachmentId: string, user: UserPayload): Promise<void>;
     findAll(query: any): Promise<{
         data: ({
+            grant: {
+                id: string;
+                name: string;
+                code: string;
+            };
             _count: {
                 milestones: number;
                 activities: number;
             };
-            grant: {
-                id: string;
-                code: string;
-                name: string;
-            };
         } & {
             id: string;
-            code: string;
-            name: string;
-            description: string | null;
-            startDate: Date;
-            endDate: Date;
-            progressPercent: import(".prisma/client/runtime/library").Decimal;
+            grantId: string;
             status: import(".prisma/client").$Enums.ProjectStatus;
             createdById: string | null;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
-            grantId: string;
+            name: string;
+            code: string;
+            startDate: Date;
+            endDate: Date;
+            description: string | null;
+            targetBeneficiaries: number | null;
+            progressPercent: import(".prisma/client/runtime/library").Decimal;
             budget: import(".prisma/client/runtime/library").Decimal;
             committedBudget: import(".prisma/client/runtime/library").Decimal;
             spentBudget: import(".prisma/client/runtime/library").Decimal;
-            targetBeneficiaries: number | null;
             projectManagerId: string | null;
         })[];
         meta: {
@@ -266,91 +266,91 @@ export declare class ProjectsController {
     }>;
     create(dto: any, user: UserPayload): Promise<{
         id: string;
-        code: string;
-        name: string;
-        description: string | null;
-        startDate: Date;
-        endDate: Date;
-        progressPercent: import(".prisma/client/runtime/library").Decimal;
+        grantId: string;
         status: import(".prisma/client").$Enums.ProjectStatus;
         createdById: string | null;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
-        grantId: string;
+        name: string;
+        code: string;
+        startDate: Date;
+        endDate: Date;
+        description: string | null;
+        targetBeneficiaries: number | null;
+        progressPercent: import(".prisma/client/runtime/library").Decimal;
         budget: import(".prisma/client/runtime/library").Decimal;
         committedBudget: import(".prisma/client/runtime/library").Decimal;
         spentBudget: import(".prisma/client/runtime/library").Decimal;
-        targetBeneficiaries: number | null;
         projectManagerId: string | null;
     }>;
     findOne(id: string): Promise<{
         grant: {
             id: string;
-            code: string;
-            name: string;
             currency: string;
+            name: string;
+            code: string;
         };
         milestones: {
             id: string;
-            projectId: string;
-            description: string | null;
+            title: string;
             status: import(".prisma/client").$Enums.MilestoneStatus;
             createdAt: Date;
             updatedAt: Date;
+            description: string | null;
+            dueDate: Date;
+            completedAt: Date | null;
+            projectId: string;
             budget: import(".prisma/client/runtime/library").Decimal;
             quarter: import(".prisma/client").$Enums.Quarter;
-            title: string;
-            dueDate: Date;
             deliverables: import(".prisma/client/runtime/library").JsonValue | null;
             paymentPercent: import(".prisma/client/runtime/library").Decimal;
-            completedAt: Date | null;
             approvedById: string | null;
         }[];
         activities: ({
             budgetLines: ({
                 budgetLine: {
                     id: string;
-                    code: string;
-                    description: string;
+                    grantId: string;
+                    currency: string;
+                    notes: string | null;
                     createdById: string | null;
                     createdAt: Date;
                     updatedAt: Date;
                     deletedAt: Date | null;
-                    grantId: string;
-                    currency: string;
+                    code: string;
                     totalBudget: import(".prisma/client/runtime/library").Decimal;
                     committedAmount: import(".prisma/client/runtime/library").Decimal;
                     spentAmount: import(".prisma/client/runtime/library").Decimal;
+                    description: string;
                     activityId: string | null;
                     category: import(".prisma/client").$Enums.BudgetCategory;
-                    notes: string | null;
                 };
             } & {
                 id: string;
+                budgetLineId: string;
                 createdAt: Date;
                 updatedAt: Date;
                 activityId: string;
-                budgetLineId: string;
                 allocatedAmount: import(".prisma/client/runtime/library").Decimal;
             })[];
         } & {
             id: string;
-            projectId: string;
-            code: string;
-            name: string;
-            description: string | null;
-            startDate: Date;
-            endDate: Date;
-            plannedBudget: import(".prisma/client/runtime/library").Decimal;
-            actualSpent: import(".prisma/client/runtime/library").Decimal;
-            progressPercent: import(".prisma/client/runtime/library").Decimal;
             status: import(".prisma/client").$Enums.ActivityStatus;
-            responsibleUserId: string | null;
             createdById: string | null;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
+            name: string;
+            code: string;
+            startDate: Date;
+            endDate: Date;
+            description: string | null;
+            projectId: string;
+            plannedBudget: import(".prisma/client/runtime/library").Decimal;
+            actualSpent: import(".prisma/client/runtime/library").Decimal;
+            progressPercent: import(".prisma/client/runtime/library").Decimal;
+            responsibleUserId: string | null;
         })[];
         staff: ({
             user: {
@@ -360,101 +360,101 @@ export declare class ProjectsController {
             };
         } & {
             id: string;
-            projectId: string;
-            startDate: Date;
-            endDate: Date | null;
             createdAt: Date;
             updatedAt: Date;
-            userId: string;
+            startDate: Date;
+            endDate: Date | null;
             role: string;
+            userId: string;
+            projectId: string;
         })[];
     } & {
         id: string;
-        code: string;
-        name: string;
-        description: string | null;
-        startDate: Date;
-        endDate: Date;
-        progressPercent: import(".prisma/client/runtime/library").Decimal;
+        grantId: string;
         status: import(".prisma/client").$Enums.ProjectStatus;
         createdById: string | null;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
-        grantId: string;
+        name: string;
+        code: string;
+        startDate: Date;
+        endDate: Date;
+        description: string | null;
+        targetBeneficiaries: number | null;
+        progressPercent: import(".prisma/client/runtime/library").Decimal;
         budget: import(".prisma/client/runtime/library").Decimal;
         committedBudget: import(".prisma/client/runtime/library").Decimal;
         spentBudget: import(".prisma/client/runtime/library").Decimal;
-        targetBeneficiaries: number | null;
         projectManagerId: string | null;
     }>;
     update(id: string, dto: any, user: UserPayload): Promise<{
         id: string;
-        code: string;
-        name: string;
-        description: string | null;
-        startDate: Date;
-        endDate: Date;
-        progressPercent: import(".prisma/client/runtime/library").Decimal;
+        grantId: string;
         status: import(".prisma/client").$Enums.ProjectStatus;
         createdById: string | null;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
-        grantId: string;
+        name: string;
+        code: string;
+        startDate: Date;
+        endDate: Date;
+        description: string | null;
+        targetBeneficiaries: number | null;
+        progressPercent: import(".prisma/client/runtime/library").Decimal;
         budget: import(".prisma/client/runtime/library").Decimal;
         committedBudget: import(".prisma/client/runtime/library").Decimal;
         spentBudget: import(".prisma/client/runtime/library").Decimal;
-        targetBeneficiaries: number | null;
         projectManagerId: string | null;
     }>;
     remove(id: string, user: UserPayload): Promise<void>;
     getMilestones(id: string): Promise<{
         id: string;
-        projectId: string;
-        description: string | null;
+        title: string;
         status: import(".prisma/client").$Enums.MilestoneStatus;
         createdAt: Date;
         updatedAt: Date;
+        description: string | null;
+        dueDate: Date;
+        completedAt: Date | null;
+        projectId: string;
         budget: import(".prisma/client/runtime/library").Decimal;
         quarter: import(".prisma/client").$Enums.Quarter;
-        title: string;
-        dueDate: Date;
         deliverables: import(".prisma/client/runtime/library").JsonValue | null;
         paymentPercent: import(".prisma/client/runtime/library").Decimal;
-        completedAt: Date | null;
         approvedById: string | null;
     }[]>;
     addMilestone(id: string, dto: any, user: UserPayload): Promise<{
         id: string;
-        projectId: string;
-        description: string | null;
+        title: string;
         status: import(".prisma/client").$Enums.MilestoneStatus;
         createdAt: Date;
         updatedAt: Date;
+        description: string | null;
+        dueDate: Date;
+        completedAt: Date | null;
+        projectId: string;
         budget: import(".prisma/client/runtime/library").Decimal;
         quarter: import(".prisma/client").$Enums.Quarter;
-        title: string;
-        dueDate: Date;
         deliverables: import(".prisma/client/runtime/library").JsonValue | null;
         paymentPercent: import(".prisma/client/runtime/library").Decimal;
-        completedAt: Date | null;
         approvedById: string | null;
     }>;
     completeMilestone(id: string, mid: string, user: UserPayload): Promise<{
         id: string;
-        projectId: string;
-        description: string | null;
+        title: string;
         status: import(".prisma/client").$Enums.MilestoneStatus;
         createdAt: Date;
         updatedAt: Date;
+        description: string | null;
+        dueDate: Date;
+        completedAt: Date | null;
+        projectId: string;
         budget: import(".prisma/client/runtime/library").Decimal;
         quarter: import(".prisma/client").$Enums.Quarter;
-        title: string;
-        dueDate: Date;
         deliverables: import(".prisma/client/runtime/library").JsonValue | null;
         paymentPercent: import(".prisma/client/runtime/library").Decimal;
-        completedAt: Date | null;
         approvedById: string | null;
     }>;
 }

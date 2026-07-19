@@ -16,6 +16,7 @@ export declare class RfqService {
                 code: string;
             };
             _count: {
+                pafForms: number;
                 vendors: number;
             };
             pr: {
@@ -25,15 +26,15 @@ export declare class RfqService {
             };
         } & {
             id: string;
+            description: string | null;
             createdAt: Date;
             updatedAt: Date;
+            title: string;
             deletedAt: Date | null;
-            description: string | null;
             createdById: string | null;
             status: import(".prisma/client").$Enums.RfqStatus;
-            title: string;
-            grantId: string;
             serialNumber: string;
+            grantId: string;
             procurementMethodId: string | null;
             prId: string;
             issuedDate: Date | null;
@@ -51,11 +52,11 @@ export declare class RfqService {
         grant: {
             currency: string;
             id: string;
+            name: string;
+            description: string | null;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
-            name: string;
-            description: string | null;
             code: string;
             startDate: Date;
             endDate: Date;
@@ -65,57 +66,57 @@ export declare class RfqService {
             donorId: string;
             fiscalYearId: string | null;
             totalBudget: Prisma.Decimal;
-            committedAmount: Prisma.Decimal;
-            spentAmount: Prisma.Decimal;
             signedDate: Date | null;
             objectives: string | null;
-            coverageArea: string | null;
-            targetBeneficiaries: number | null;
             reportingRequirements: string | null;
+            targetBeneficiaries: number | null;
             grantManagerId: string | null;
             projectCoordinatorId: string | null;
+            committedAmount: Prisma.Decimal;
+            spentAmount: Prisma.Decimal;
+            coverageArea: string | null;
         };
         pr: {
             items: {
                 id: string;
+                description: string;
                 createdAt: Date;
                 updatedAt: Date;
-                description: string;
                 budgetLineId: string | null;
+                prId: string;
                 specification: string | null;
                 unit: string;
                 quantity: Prisma.Decimal;
                 estimatedUnitPrice: Prisma.Decimal;
                 totalEstimated: Prisma.Decimal;
-                prId: string;
             }[];
         } & {
             currency: string;
             id: string;
-            departmentId: string | null;
+            description: string | null;
             createdAt: Date;
             updatedAt: Date;
-            deletedAt: Date | null;
-            description: string | null;
-            status: import(".prisma/client").$Enums.DocumentStatus;
             title: string;
-            grantId: string;
-            activityId: string | null;
-            workflowInstanceId: string | null;
+            departmentId: string | null;
+            deletedAt: Date | null;
+            status: import(".prisma/client").$Enums.DocumentStatus;
             serialNumber: string;
             appItemId: string | null;
+            grantId: string;
+            activityId: string | null;
             budgetLineId: string | null;
             requestedById: string;
             procurementMethodId: string | null;
             totalEstimatedAmount: Prisma.Decimal;
             requiredByDate: Date | null;
             justification: string | null;
+            workflowInstanceId: string | null;
         };
         vendors: ({
             vendor: {
                 id: string;
-                email: string | null;
                 name: string;
+                email: string | null;
                 rating: Prisma.Decimal;
             };
         } & {
@@ -123,10 +124,10 @@ export declare class RfqService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            rfqId: string;
+            vendorId: string;
             notes: string | null;
             fileUrl: string | null;
-            vendorId: string;
-            rfqId: string;
             invitedAt: Date;
             respondedAt: Date | null;
             quotedAmount: Prisma.Decimal | null;
@@ -143,8 +144,8 @@ export declare class RfqService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            notes: string | null;
             rfqId: string;
+            notes: string | null;
             rfqVendorId: string;
             evaluatorId: string;
             criteriaName: string;
@@ -154,15 +155,33 @@ export declare class RfqService {
         }[];
     } & {
         id: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
+        title: string;
         deletedAt: Date | null;
-        description: string | null;
         createdById: string | null;
         status: import(".prisma/client").$Enums.RfqStatus;
-        title: string;
-        grantId: string;
         serialNumber: string;
+        grantId: string;
+        procurementMethodId: string | null;
+        prId: string;
+        issuedDate: Date | null;
+        submissionDeadline: Date;
+        openingDate: Date | null;
+    }>;
+    private resolveSubmissionDeadline;
+    createDraftFromPr(prId: string, user: UserPayload): Promise<{
+        id: string;
+        description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        title: string;
+        deletedAt: Date | null;
+        createdById: string | null;
+        status: import(".prisma/client").$Enums.RfqStatus;
+        serialNumber: string;
+        grantId: string;
         procurementMethodId: string | null;
         prId: string;
         issuedDate: Date | null;
@@ -171,15 +190,15 @@ export declare class RfqService {
     }>;
     create(dto: any, user: UserPayload): Promise<{
         id: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
+        title: string;
         deletedAt: Date | null;
-        description: string | null;
         createdById: string | null;
         status: import(".prisma/client").$Enums.RfqStatus;
-        title: string;
-        grantId: string;
         serialNumber: string;
+        grantId: string;
         procurementMethodId: string | null;
         prId: string;
         issuedDate: Date | null;
@@ -188,15 +207,15 @@ export declare class RfqService {
     }>;
     issue(id: string, user: UserPayload): Promise<{
         id: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
+        title: string;
         deletedAt: Date | null;
-        description: string | null;
         createdById: string | null;
         status: import(".prisma/client").$Enums.RfqStatus;
-        title: string;
-        grantId: string;
         serialNumber: string;
+        grantId: string;
         procurementMethodId: string | null;
         prId: string;
         issuedDate: Date | null;
@@ -206,18 +225,18 @@ export declare class RfqService {
     inviteVendor(rfqId: string, vendorId: string, user: UserPayload): Promise<{
         vendor: {
             id: string;
-            email: string | null;
             name: string;
+            email: string | null;
         };
     } & {
         currency: string | null;
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        rfqId: string;
+        vendorId: string;
         notes: string | null;
         fileUrl: string | null;
-        vendorId: string;
-        rfqId: string;
         invitedAt: Date;
         respondedAt: Date | null;
         quotedAmount: Prisma.Decimal | null;
@@ -231,14 +250,20 @@ export declare class RfqService {
         isWinner: boolean;
     }>;
     updateVendorQuotation(rfqId: string, rfqVendorId: string, dto: any): Promise<{
+        vendor: {
+            id: string;
+            name: string;
+            email: string | null;
+        };
+    } & {
         currency: string | null;
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        rfqId: string;
+        vendorId: string;
         notes: string | null;
         fileUrl: string | null;
-        vendorId: string;
-        rfqId: string;
         invitedAt: Date;
         respondedAt: Date | null;
         quotedAmount: Prisma.Decimal | null;
@@ -256,10 +281,10 @@ export declare class RfqService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        rfqId: string;
+        vendorId: string;
         notes: string | null;
         fileUrl: string | null;
-        vendorId: string;
-        rfqId: string;
         invitedAt: Date;
         respondedAt: Date | null;
         quotedAmount: Prisma.Decimal | null;
@@ -281,8 +306,8 @@ export declare class RfqService {
         vendors: ({
             vendor: {
                 id: string;
-                email: string | null;
                 name: string;
+                email: string | null;
                 rating: Prisma.Decimal;
             };
         } & {
@@ -290,10 +315,10 @@ export declare class RfqService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            rfqId: string;
+            vendorId: string;
             notes: string | null;
             fileUrl: string | null;
-            vendorId: string;
-            rfqId: string;
             invitedAt: Date;
             respondedAt: Date | null;
             quotedAmount: Prisma.Decimal | null;

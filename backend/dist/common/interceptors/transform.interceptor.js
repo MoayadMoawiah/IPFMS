@@ -12,6 +12,9 @@ const operators_1 = require("rxjs/operators");
 let TransformInterceptor = class TransformInterceptor {
     intercept(context, next) {
         return next.handle().pipe((0, operators_1.map)((data) => {
+            if (data instanceof common_1.StreamableFile) {
+                return data;
+            }
             if (data && typeof data === 'object' && ('data' in data || 'meta' in data)) {
                 return data;
             }

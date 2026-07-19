@@ -23,12 +23,19 @@ import {
   FormField,
   FormSection,
 } from "@/components/forms/form-layout";
+import {
+  REQUISITION_DOCUMENT_LABELS,
+  SupportingDocumentsField,
+  markAllStagedFiles,
+  type StagedFile,
+} from "@/components/forms/supporting-documents-field";
 import { useGrants } from "@/hooks/use-grants";
 import { getPaginatedItems } from "@/lib/api/pagination";
 import {
   useCreatePurchaseRequisition,
   useSubmitPurchaseRequisition,
 } from "@/hooks/use-procurement";
+import { uploadRequisitionDocuments } from "@/lib/api/uploads";
 import { DEPARTMENTS } from "@/lib/constants/departments";
 import { cn } from "@/lib/utils";
 
@@ -77,6 +84,8 @@ export default function NewPRPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   const { data: grantsData, isLoading: loadingGrants } = useGrants({
     limit: 100,
@@ -160,13 +169,34 @@ export default function NewPRPage() {
     };
 
     createPR.mutate(dto, {
-      onSuccess: (pr) => {
+      onSuccess: async (pr) => {
+        if (stagedFiles.length > 0) {
+          const files = stagedFiles.map((s) => s.file);
+          const labels = stagedFiles.map((s) => s.label);
+          setIsUploading(true);
+          markAllStagedFiles(setStagedFiles, "uploading");
+          try {
+            await uploadRequisitionDocuments(pr.id, files, labels);
+            markAllStagedFiles(setStagedFiles, "success");
+          } catch (uploadErr: unknown) {
+            const msg =
+              (uploadErr as { response?: { data?: { message?: string } }; message?: string })
+                ?.response?.data?.message ??
+              (uploadErr as { message?: string })?.message ??
+              "Document upload failed";
+            markAllStagedFiles(setStagedFiles, "error", msg);
+            setSubmitError(`PR created, but document upload failed: ${msg}`);
+          } finally {
+            setIsUploading(false);
+          }
+        }
+
         submitPR.mutate(pr.id, {
-          onSuccess: () => router.push("/procurement/requisitions"),
+          onSuccess: () => router.push(`/procurement/requisitions/${pr.id}`),
           onError: (err: unknown) => {
             const msg = extractError(err);
             setSubmitError(msg);
-            router.push(`/procurement/requisitions`);
+            router.push(`/procurement/requisitions/${pr.id}`);
           },
         });
       },
@@ -176,7 +206,7 @@ export default function NewPRPage() {
     });
   };
 
-  const isSubmitting = createPR.isPending || submitPR.isPending;
+  const isSubmitting = createPR.isPending || submitPR.isPending || isUploading;
 
   return (
     <div>
@@ -409,16 +439,13 @@ export default function NewPRPage() {
         )}
 
         {step === 3 && (
-          <FormSection title="Attachments" contentClassName="grid-cols-1">
-            <div className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-6 py-10 text-center sm:col-span-2">
-              <p className="text-sm font-medium text-muted-foreground">
-                Document attachments will be available in a future update.
-              </p>
-              <p className="text-xs text-muted-foreground">
-                You can proceed without attachments for now.
-              </p>
-            </div>
-          </FormSection>
+          <SupportingDocumentsField
+            documentLabels={REQUISITION_DOCUMENT_LABELS}
+            stagedFiles={stagedFiles}
+            onStagedFilesChange={setStagedFiles}
+            onValidationError={setSubmitError}
+            disabled={isSubmitting}
+          />
         )}
 
         {step === 4 && (
@@ -447,6 +474,14 @@ export default function NewPRPage() {
                   <dt className="text-muted-foreground">Total Amount</dt>
                   <dd className="font-medium">
                     {formatCurrency(estimatedTotal, selectedGrant?.currency)}
+                  </dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Attachments</dt>
+                  <dd className="font-medium">
+                    {stagedFiles.length === 0
+                      ? "None"
+                      : `${stagedFiles.length} file${stagedFiles.length === 1 ? "" : "s"}`}
                   </dd>
                 </div>
               </dl>

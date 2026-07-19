@@ -16,15 +16,30 @@ const workflow_service_1 = require("../../workflow/workflow.service");
 const serial_service_1 = require("../../serial/serial.service");
 const audit_service_1 = require("../../audit/audit.service");
 const grants_service_1 = require("../../grants/grants.service");
+const minio_service_1 = require("../../uploads/minio.service");
 const client_1 = require("@prisma/client");
 const pagination_dto_1 = require("../../common/dto/pagination.dto");
+const procurement_constants_1 = require("../../common/constants/procurement.constants");
+const rfq_service_1 = require("../rfq/rfq.service");
+const ALLOWED_MIME_TYPES = new Set([
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'image/jpeg',
+    'image/png',
+]);
+const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 let RequisitionsService = class RequisitionsService {
-    constructor(prisma, workflowSvc, serialSvc, auditSvc, grantsSvc) {
+    constructor(prisma, workflowSvc, serialSvc, auditSvc, grantsSvc, minioSvc, rfqSvc) {
         this.prisma = prisma;
         this.workflowSvc = workflowSvc;
         this.serialSvc = serialSvc;
         this.auditSvc = auditSvc;
         this.grantsSvc = grantsSvc;
+        this.minioSvc = minioSvc;
+        this.rfqSvc = rfqSvc;
     }
     async findAll(query, user) {
         const { page, limit } = (0, pagination_dto_1.parsePagination)(query);
@@ -48,6 +63,26 @@ let RequisitionsService = class RequisitionsService {
                     requestedBy: { select: { id: true, firstName: true, lastName: true } },
                     procurementMethod: { select: { id: true, name: true, code: true } },
                     _count: { select: { items: true } },
+                    workflow: {
+                        select: {
+                            id: true,
+                            status: true,
+                            templateId: true,
+                            currentStepNumber: true,
+                            steps: {
+                                where: { status: 'IN_PROGRESS' },
+                                take: 1,
+                                select: {
+                                    stepNumber: true,
+                                    stepName: true,
+                                    assignedRoleId: true,
+                                    assignedUserId: true,
+                                    status: true,
+                                    dueAt: true,
+                                },
+                            },
+                        },
+                    },
                 },
                 skip: (page - 1) * limit,
                 take: limit,
@@ -55,28 +90,107 @@ let RequisitionsService = class RequisitionsService {
             }),
             this.prisma.purchaseRequisition.count({ where }),
         ]);
-        return (0, pagination_dto_1.buildPaginationResponse)(data, total, page, limit);
+        const enriched = await Promise.all(data.map(async (pr) => {
+            const approvalContext = await this.workflowSvc.buildApprovalContext(pr.workflow);
+            const { workflow, ...rest } = pr;
+            return { ...rest, approvalContext };
+        }));
+        return (0, pagination_dto_1.buildPaginationResponse)(enriched, total, page, limit);
     }
-    async findOne(id) {
+    async findOne(id, user) {
         const pr = await this.prisma.purchaseRequisition.findUnique({
             where: { id, deletedAt: null },
             include: {
                 grant: true,
                 activity: true,
-                requestedBy: { select: { id: true, firstName: true, lastName: true, email: true } },
+                requestedBy: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        roles: { include: { role: { select: { id: true, name: true } } } },
+                    },
+                },
                 procurementMethod: true,
                 items: true,
+                rfqs: {
+                    where: { deletedAt: null },
+                    orderBy: { createdAt: 'desc' },
+                    select: {
+                        id: true,
+                        serialNumber: true,
+                        status: true,
+                        submissionDeadline: true,
+                        createdAt: true,
+                    },
+                },
+                purchaseOrders: {
+                    where: { deletedAt: null },
+                    orderBy: { createdAt: 'desc' },
+                    select: {
+                        id: true,
+                        serialNumber: true,
+                        status: true,
+                        totalAmount: true,
+                        currency: true,
+                        vendor: { select: { id: true, name: true } },
+                    },
+                },
+                pafForms: {
+                    orderBy: { createdAt: 'desc' },
+                    select: {
+                        id: true,
+                        status: true,
+                        rfqId: true,
+                        recommendedVendorId: true,
+                        totalAmount: true,
+                    },
+                },
                 workflow: {
                     include: {
-                        steps: { orderBy: { stepNumber: 'asc' }, include: { digitalSignature: true } },
-                        actions: { include: { actor: { select: { firstName: true, lastName: true } } }, orderBy: { actionAt: 'asc' } },
+                        template: { select: { id: true } },
+                        steps: {
+                            orderBy: { stepNumber: 'asc' },
+                            include: {
+                                digitalSignature: {
+                                    include: {
+                                        user: {
+                                            select: {
+                                                id: true,
+                                                firstName: true,
+                                                lastName: true,
+                                                roles: { include: { role: { select: { id: true, name: true } } } },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                        actions: {
+                            include: {
+                                actor: {
+                                    select: {
+                                        id: true,
+                                        firstName: true,
+                                        lastName: true,
+                                        roles: { include: { role: { select: { id: true, name: true } } } },
+                                    },
+                                },
+                            },
+                            orderBy: { actionAt: 'asc' },
+                        },
                     },
                 },
             },
         });
         if (!pr)
             throw new common_1.NotFoundException(`Purchase Requisition ${id} not found`);
-        return pr;
+        const approvalContext = user
+            ? await this.workflowSvc.buildApprovalContext(pr.workflow, user.id, user.roles)
+            : await this.workflowSvc.buildApprovalContext(pr.workflow);
+        const procurementRoute = (0, procurement_constants_1.resolveProcurementRoute)(Number(pr.totalEstimatedAmount));
+        return { ...pr, approvalContext, procurementRoute };
     }
     async create(dto, user) {
         const grant = await this.prisma.grant.findUnique({
@@ -201,9 +315,12 @@ let RequisitionsService = class RequisitionsService {
         const pr = await this.findOne(id);
         if (!pr.workflowInstanceId)
             throw new common_1.BadRequestException('No active workflow for this PR');
-        const instance = await this.workflowSvc.processAction(pr.workflowInstanceId, action, user.id, comment);
+        const instance = await this.workflowSvc.processAction(pr.workflowInstanceId, action, user.id, comment, { ipAddress: user.ipAddress, userAgent: user.userAgent });
         let newStatus = pr.status;
-        if (instance.status === 'APPROVED') {
+        if (action === 'RETURN') {
+            newStatus = client_1.DocumentStatus.RETURNED;
+        }
+        else if (instance.status === 'APPROVED') {
             newStatus = client_1.DocumentStatus.APPROVED;
             if (pr.budgetLineId) {
                 await this.grantsSvc.commitBudget(pr.budgetLineId, Number(pr.totalEstimatedAmount));
@@ -229,7 +346,26 @@ let RequisitionsService = class RequisitionsService {
             resourceId: id,
             newValues: { status: newStatus, workflowAction: action },
         });
-        return { status: newStatus, workflowInstance: instance };
+        let procurementRoute;
+        let nextStep;
+        if (newStatus === client_1.DocumentStatus.APPROVED && action === 'APPROVE') {
+            procurementRoute = (0, procurement_constants_1.resolveProcurementRoute)(Number(pr.totalEstimatedAmount));
+            if (procurementRoute === 'RFQ') {
+                const rfq = await this.rfqSvc.createDraftFromPr(id, user);
+                nextStep = {
+                    type: 'RFQ',
+                    rfqId: rfq.id,
+                    redirectUrl: `/procurement/rfq/${rfq.id}`,
+                };
+            }
+            else {
+                nextStep = {
+                    type: 'PO',
+                    redirectUrl: `/procurement/purchase-orders/new?prId=${id}`,
+                };
+            }
+        }
+        return { status: newStatus, workflowInstance: instance, procurementRoute, nextStep };
     }
     async softDelete(id, user) {
         const pr = await this.findOne(id);
@@ -259,6 +395,102 @@ let RequisitionsService = class RequisitionsService {
             },
         });
     }
+    async uploadDocuments(prId, files, labels, user) {
+        const pr = await this.findOne(prId);
+        if (pr.status !== client_1.DocumentStatus.DRAFT && pr.status !== client_1.DocumentStatus.RETURNED) {
+            throw new common_1.BadRequestException('Documents can only be added to DRAFT or RETURNED PRs');
+        }
+        const results = [];
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const label = labels[i] ?? 'Other';
+            if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
+                throw new common_1.BadRequestException(`File type '${file.mimetype}' is not allowed for '${file.originalname}'`);
+            }
+            if (file.size > MAX_FILE_SIZE_BYTES) {
+                throw new common_1.BadRequestException(`File '${file.originalname}' exceeds the 20 MB size limit`);
+            }
+            const timestamp = Date.now();
+            const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const storageKey = `requisitions/${prId}/${timestamp}-${safeName}`;
+            await this.minioSvc.uploadFile(file.buffer, storageKey, file.mimetype);
+            const fileUrl = this.minioSvc.buildPublicUrl(storageKey);
+            const attachment = await this.prisma.documentAttachment.create({
+                data: {
+                    documentType: 'PurchaseRequisition',
+                    documentId: prId,
+                    fileName: label,
+                    originalName: file.originalname,
+                    fileSize: file.size,
+                    mimeType: file.mimetype,
+                    fileUrl,
+                    storageKey,
+                    uploadedById: user.id,
+                },
+                include: {
+                    uploadedBy: { select: { id: true, firstName: true, lastName: true } },
+                },
+            });
+            results.push(attachment);
+        }
+        await this.auditSvc.log({
+            userId: user.id,
+            userEmail: user.email,
+            action: 'CREATE',
+            module: 'PROCUREMENT',
+            resource: 'DocumentAttachment',
+            resourceId: prId,
+            newValues: { count: results.length },
+            ipAddress: user.ipAddress,
+            userAgent: user.userAgent,
+        });
+        return results;
+    }
+    async listDocuments(prId) {
+        await this.findOne(prId);
+        return this.prisma.documentAttachment.findMany({
+            where: {
+                documentType: 'PurchaseRequisition',
+                documentId: prId,
+                deletedAt: null,
+            },
+            include: {
+                uploadedBy: { select: { id: true, firstName: true, lastName: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+    }
+    async deleteDocument(prId, attachmentId, user) {
+        const pr = await this.findOne(prId);
+        if (pr.status !== client_1.DocumentStatus.DRAFT && pr.status !== client_1.DocumentStatus.RETURNED) {
+            throw new common_1.BadRequestException('Documents can only be removed from DRAFT or RETURNED PRs');
+        }
+        const attachment = await this.prisma.documentAttachment.findFirst({
+            where: {
+                id: attachmentId,
+                documentType: 'PurchaseRequisition',
+                documentId: prId,
+                deletedAt: null,
+            },
+        });
+        if (!attachment)
+            throw new common_1.NotFoundException('Document not found');
+        await this.prisma.documentAttachment.update({
+            where: { id: attachmentId },
+            data: { deletedAt: new Date() },
+        });
+        await this.minioSvc.deleteFile(attachment.storageKey);
+        await this.auditSvc.log({
+            userId: user.id,
+            userEmail: user.email,
+            action: 'SOFT_DELETE',
+            module: 'PROCUREMENT',
+            resource: 'DocumentAttachment',
+            resourceId: attachmentId,
+            ipAddress: user.ipAddress,
+            userAgent: user.userAgent,
+        });
+    }
 };
 exports.RequisitionsService = RequisitionsService;
 exports.RequisitionsService = RequisitionsService = __decorate([
@@ -267,6 +499,8 @@ exports.RequisitionsService = RequisitionsService = __decorate([
         workflow_service_1.WorkflowService,
         serial_service_1.SerialService,
         audit_service_1.AuditService,
-        grants_service_1.GrantsService])
+        grants_service_1.GrantsService,
+        minio_service_1.MinioService,
+        rfq_service_1.RfqService])
 ], RequisitionsService);
 //# sourceMappingURL=requisitions.service.js.map
