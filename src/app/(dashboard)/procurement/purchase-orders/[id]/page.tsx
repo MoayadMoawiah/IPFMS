@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -9,6 +9,7 @@ import {
   CheckCircle,
   ExternalLink,
   FileText,
+  PackageCheck,
   Printer,
   Send,
   Trash2,
@@ -49,6 +50,7 @@ type AttachmentRow = DocumentAttachment & { source: "pr" | "po" };
 
 export default function PODetailPage() {
   const params = useParams();
+  const router = useRouter();
   const poId = params.id as string;
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -65,6 +67,14 @@ export default function PODetailPage() {
   const hasPoApprove = usePermission("PURCHASE_ORDERS:APPROVE");
   const hasWorkflowApprove = usePermission("WORKFLOW:APPROVE");
   const canUpdatePo = usePermission("PURCHASE_ORDERS:UPDATE");
+
+  // If print/PDF truncated the cuid in the URL, canonicalize to the full id.
+  useEffect(() => {
+    const fullId = (data as { id?: string } | undefined)?.id;
+    if (fullId && fullId !== poId) {
+      router.replace(`/procurement/purchase-orders/${fullId}`);
+    }
+  }, [data, poId, router]);
 
   const submitPo = useMutation({
     mutationFn: (id: string) => submitPurchaseOrder(id),
@@ -320,6 +330,16 @@ export default function PODetailPage() {
                   >
                     <CheckCircle className="h-4 w-4" />
                     {issuePo.isPending ? "Issuing…" : "Issue PO"}
+                  </Button>
+                </PermissionGate>
+              )}
+              {status === "issued" && (
+                <PermissionGate permission="GOODS_RECEIPTS:CREATE">
+                  <Button asChild>
+                    <Link href={`/procurement/goods-receipt/new?poId=${poId}`}>
+                      <PackageCheck className="h-4 w-4" />
+                      Create GRN
+                    </Link>
                   </Button>
                 </PermissionGate>
               )}

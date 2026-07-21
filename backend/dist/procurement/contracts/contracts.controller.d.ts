@@ -19,7 +19,6 @@ export declare class ContractsController {
             description: string | null;
             createdAt: Date;
             updatedAt: Date;
-            title: string;
             deletedAt: Date | null;
             startDate: Date;
             endDate: Date;
@@ -27,6 +26,7 @@ export declare class ContractsController {
             status: import(".prisma/client").$Enums.ContractStatus;
             serialNumber: string;
             grantId: string;
+            title: string;
             workflowInstanceId: string | null;
             vendorId: string;
             deliverables: string | null;
@@ -47,7 +47,6 @@ export declare class ContractsController {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string;
         deletedAt: Date | null;
         startDate: Date;
         endDate: Date;
@@ -55,6 +54,7 @@ export declare class ContractsController {
         status: import(".prisma/client").$Enums.ContractStatus;
         serialNumber: string;
         grantId: string;
+        title: string;
         workflowInstanceId: string | null;
         vendorId: string;
         deliverables: string | null;
@@ -74,7 +74,6 @@ export declare class ContractsController {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string;
         deletedAt: Date | null;
         startDate: Date;
         endDate: Date;
@@ -82,6 +81,7 @@ export declare class ContractsController {
         status: import(".prisma/client").$Enums.ContractStatus;
         serialNumber: string;
         grantId: string;
+        title: string;
         workflowInstanceId: string | null;
         vendorId: string;
         deliverables: string | null;
@@ -107,15 +107,15 @@ export declare class ContractsController {
             donorId: string;
             fiscalYearId: string | null;
             totalBudget: import(".prisma/client/runtime/library").Decimal;
-            signedDate: Date | null;
-            objectives: string | null;
-            reportingRequirements: string | null;
-            targetBeneficiaries: number | null;
-            grantManagerId: string | null;
-            projectCoordinatorId: string | null;
             committedAmount: import(".prisma/client/runtime/library").Decimal;
             spentAmount: import(".prisma/client/runtime/library").Decimal;
+            signedDate: Date | null;
+            objectives: string | null;
             coverageArea: string | null;
+            targetBeneficiaries: number | null;
+            reportingRequirements: string | null;
+            grantManagerId: string | null;
+            projectCoordinatorId: string | null;
         };
         vendor: {
             id: string;
@@ -151,7 +151,6 @@ export declare class ContractsController {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string;
         deletedAt: Date | null;
         startDate: Date;
         endDate: Date;
@@ -159,6 +158,7 @@ export declare class ContractsController {
         status: import(".prisma/client").$Enums.ContractStatus;
         serialNumber: string;
         grantId: string;
+        title: string;
         workflowInstanceId: string | null;
         vendorId: string;
         deliverables: string | null;
@@ -172,7 +172,6 @@ export declare class ContractsController {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string;
         deletedAt: Date | null;
         startDate: Date;
         endDate: Date;
@@ -180,6 +179,7 @@ export declare class ContractsController {
         status: import(".prisma/client").$Enums.ContractStatus;
         serialNumber: string;
         grantId: string;
+        title: string;
         workflowInstanceId: string | null;
         vendorId: string;
         deliverables: string | null;
@@ -193,7 +193,6 @@ export declare class ContractsController {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string;
         deletedAt: Date | null;
         startDate: Date;
         endDate: Date;
@@ -201,6 +200,7 @@ export declare class ContractsController {
         status: import(".prisma/client").$Enums.ContractStatus;
         serialNumber: string;
         grantId: string;
+        title: string;
         workflowInstanceId: string | null;
         vendorId: string;
         deliverables: string | null;
@@ -216,7 +216,6 @@ export declare class ContractsController {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string;
         deletedAt: Date | null;
         startDate: Date;
         endDate: Date;
@@ -224,6 +223,7 @@ export declare class ContractsController {
         status: import(".prisma/client").$Enums.ContractStatus;
         serialNumber: string;
         grantId: string;
+        title: string;
         workflowInstanceId: string | null;
         vendorId: string;
         deliverables: string | null;

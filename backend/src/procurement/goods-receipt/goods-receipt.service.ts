@@ -3,9 +3,27 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { WorkflowService } from '../../workflow/workflow.service';
 import { SerialService } from '../../serial/serial.service';
 import { AuditService } from '../../audit/audit.service';
+import { MinioService } from '../../uploads/minio.service';
 import { DocumentStatus, Prisma } from '@prisma/client';
 import { UserPayload } from '../../common/decorators/current-user.decorator';
 import { buildPaginationResponse, parsePagination } from '../../common/dto/pagination.dto';
+
+const ALLOWED_MIME_TYPES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'image/jpeg',
+  'image/png',
+]);
+
+const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
+
+const GRN_DOC_EDITABLE_STATUSES: DocumentStatus[] = [
+  DocumentStatus.DRAFT,
+  DocumentStatus.RETURNED,
+];
 
 @Injectable()
 export class GoodsReceiptService {
@@ -14,6 +32,7 @@ export class GoodsReceiptService {
     private readonly workflowSvc: WorkflowService,
     private readonly serialSvc: SerialService,
     private readonly auditSvc: AuditService,
+    private readonly minioSvc: MinioService,
   ) {}
 
   async findAll(query: any) {
@@ -47,7 +66,7 @@ export class GoodsReceiptService {
     return buildPaginationResponse(data, total, page, limit);
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, user?: UserPayload) {
     const userWithRoles = {
       select: {
         id: true,
@@ -83,7 +102,12 @@ export class GoodsReceiptService {
       },
     });
     if (!grn) throw new NotFoundException(`GRN ${id} not found`);
-    return grn;
+
+    const approvalContext = user
+      ? await this.workflowSvc.buildApprovalContext(grn.workflow, user.id, user.roles)
+      : await this.workflowSvc.buildApprovalContext(grn.workflow);
+
+    return { ...grn, approvalContext };
   }
 
   async create(dto: any, user: UserPayload) {
@@ -92,8 +116,11 @@ export class GoodsReceiptService {
       include: { grant: true },
     });
     if (!po) throw new NotFoundException('Purchase Order not found');
-    if (po.status !== 'APPROVED' && po.status !== 'SUBMITTED') {
-      throw new BadRequestException('PO must be APPROVED or SUBMITTED to create GRN');
+    const grnAllowedStatuses = new Set(['APPROVED', 'ISSUED']);
+    if (!grnAllowedStatuses.has(po.status)) {
+      throw new BadRequestException(
+        'PO must be APPROVED or ISSUED to create a goods receipt',
+      );
     }
 
     const serialNumber = await this.serialSvc.next(po.grant.code, 'GRN');
@@ -137,9 +164,99 @@ export class GoodsReceiptService {
     return grn;
   }
 
+  async update(id: string, dto: any, user: UserPayload) {
+    const grn = await this.findOne(id);
+    if (
+      grn.status !== DocumentStatus.DRAFT &&
+      grn.status !== DocumentStatus.RETURNED
+    ) {
+      throw new BadRequestException(
+        'Only DRAFT or RETURNED GRNs can be updated',
+      );
+    }
+
+    const items = Array.isArray(dto.items) ? dto.items : [];
+    for (const item of items) {
+      const rejectedQty = Number(item.rejectedQuantity) || 0;
+      if (rejectedQty > 0 && !String(item.notes ?? '').trim()) {
+        throw new BadRequestException(
+          'Rejection reason is required for rejected items',
+        );
+      }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.goodsReceipt.update({
+        where: { id },
+        data: {
+          ...(dto.warehouseId !== undefined && {
+            warehouseId: dto.warehouseId || null,
+          }),
+          ...(dto.receiptDate && {
+            receiptDate: new Date(dto.receiptDate),
+          }),
+          ...(dto.deliveryNote !== undefined && {
+            deliveryNote: dto.deliveryNote,
+          }),
+          ...(dto.notes !== undefined && { notes: dto.notes }),
+        },
+      });
+
+      for (const item of items) {
+        if (!item.id) continue;
+        const existing = grn.items.find((i) => i.id === item.id);
+        if (!existing) {
+          throw new BadRequestException(`GRN item ${item.id} not found`);
+        }
+
+        await tx.grnItem.update({
+          where: { id: item.id },
+          data: {
+            ...(item.description !== undefined && {
+              description: item.description,
+            }),
+            ...(item.deliveredQuantity !== undefined && {
+              deliveredQuantity: new Prisma.Decimal(item.deliveredQuantity),
+            }),
+            ...(item.acceptedQuantity !== undefined && {
+              acceptedQuantity: new Prisma.Decimal(item.acceptedQuantity),
+            }),
+            ...(item.rejectedQuantity !== undefined && {
+              rejectedQuantity: new Prisma.Decimal(item.rejectedQuantity || 0),
+            }),
+            ...(item.damagedQuantity !== undefined && {
+              damagedQuantity: new Prisma.Decimal(item.damagedQuantity || 0),
+            }),
+            ...(item.notes !== undefined && { notes: item.notes || null }),
+          },
+        });
+      }
+    });
+
+    await this.auditSvc.log({
+      userId: user.id,
+      userEmail: user.email,
+      action: 'UPDATE',
+      module: 'GOODS_RECEIPTS',
+      resource: 'GoodsReceipt',
+      resourceId: id,
+      newValues: {
+        warehouseId: dto.warehouseId,
+        receiptDate: dto.receiptDate,
+        itemCount: items.length,
+      },
+      ipAddress: user.ipAddress,
+      userAgent: user.userAgent,
+    });
+
+    return this.findOne(id, user);
+  }
+
   async submit(id: string, user: UserPayload) {
     const grn = await this.findOne(id);
-    if (grn.status !== DocumentStatus.DRAFT) throw new BadRequestException('Only DRAFT GRNs can be submitted');
+    if (grn.status !== DocumentStatus.DRAFT && grn.status !== DocumentStatus.RETURNED) {
+      throw new BadRequestException('Only DRAFT or RETURNED GRNs can be submitted');
+    }
 
     const workflowInstance = await this.workflowSvc.startWorkflow('GOODS_RECEIPT', id, user.id);
 
@@ -162,7 +279,6 @@ export class GoodsReceiptService {
     );
 
     if (instance.status === 'APPROVED') {
-      // Update PO received quantities and status
       for (const item of grn.items) {
         await this.prisma.poItem.update({
           where: { id: item.poItemId },
@@ -170,7 +286,6 @@ export class GoodsReceiptService {
         });
       }
 
-      // Update inventory stock
       for (const item of grn.items) {
         if (item.acceptedQuantity && Number(item.acceptedQuantity) > 0) {
           // Stock movement would be added here linked to warehouse
@@ -184,6 +299,195 @@ export class GoodsReceiptService {
     }
 
     return instance;
+  }
+
+  async reject(id: string, comment: string, user: UserPayload) {
+    if (!comment?.trim()) {
+      throw new BadRequestException('Rejection comment is required');
+    }
+
+    const grn = await this.findOne(id);
+    if (!grn.workflowInstanceId) throw new BadRequestException('No active workflow');
+
+    const instance = await this.workflowSvc.processAction(
+      grn.workflowInstanceId,
+      'REJECT' as any,
+      user.id,
+      comment.trim(),
+      { ipAddress: user.ipAddress, userAgent: user.userAgent },
+    );
+
+    if (instance.status === 'REJECTED') {
+      await this.prisma.goodsReceipt.update({
+        where: { id },
+        data: { status: DocumentStatus.REJECTED },
+      });
+    }
+
+    return instance;
+  }
+
+  async return_(id: string, comment: string, user: UserPayload) {
+    if (!comment?.trim()) {
+      throw new BadRequestException('A comment is required when returning a GRN');
+    }
+
+    const grn = await this.findOne(id);
+    if (!grn.workflowInstanceId) throw new BadRequestException('No active workflow');
+
+    const instance = await this.workflowSvc.processAction(
+      grn.workflowInstanceId,
+      'RETURN' as any,
+      user.id,
+      comment.trim(),
+      { ipAddress: user.ipAddress, userAgent: user.userAgent },
+    );
+
+    if (instance.status === 'RETURNED') {
+      await this.prisma.goodsReceipt.update({
+        where: { id },
+        data: { status: DocumentStatus.RETURNED },
+      });
+    }
+
+    await this.auditSvc.log({
+      userId: user.id,
+      userEmail: user.email,
+      action: 'RETURN',
+      module: 'GOODS_RECEIPTS',
+      resource: 'GoodsReceipt',
+      resourceId: id,
+      newValues: { status: DocumentStatus.RETURNED, comment: comment.trim() },
+      ipAddress: user.ipAddress,
+      userAgent: user.userAgent,
+    });
+
+    return instance;
+  }
+
+  async uploadDocuments(
+    grnId: string,
+    files: Express.Multer.File[],
+    labels: string[],
+    user: UserPayload,
+  ) {
+    const grn = await this.findOne(grnId);
+    if (!GRN_DOC_EDITABLE_STATUSES.includes(grn.status as DocumentStatus)) {
+      throw new BadRequestException(
+        'Documents can only be added to DRAFT or RETURNED goods receipts',
+      );
+    }
+
+    const results: any[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const label = labels[i] ?? 'Other';
+
+      if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
+        throw new BadRequestException(
+          `File type '${file.mimetype}' is not allowed for '${file.originalname}'`,
+        );
+      }
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        throw new BadRequestException(
+          `File '${file.originalname}' exceeds the 20 MB size limit`,
+        );
+      }
+
+      const timestamp = Date.now();
+      const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const storageKey = `goods-receipts/${grnId}/${timestamp}-${safeName}`;
+
+      await this.minioSvc.uploadFile(file.buffer, storageKey, file.mimetype);
+      const fileUrl = this.minioSvc.buildPublicUrl(storageKey);
+
+      const attachment = await this.prisma.documentAttachment.create({
+        data: {
+          documentType: 'GoodsReceipt',
+          documentId: grnId,
+          fileName: label,
+          originalName: file.originalname,
+          fileSize: file.size,
+          mimeType: file.mimetype,
+          fileUrl,
+          storageKey,
+          uploadedById: user.id,
+        },
+        include: {
+          uploadedBy: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+
+      results.push(attachment);
+    }
+
+    await this.auditSvc.log({
+      userId: user.id,
+      userEmail: user.email,
+      action: 'CREATE',
+      module: 'GOODS_RECEIPTS',
+      resource: 'DocumentAttachment',
+      resourceId: grnId,
+      newValues: { count: results.length },
+      ipAddress: user.ipAddress,
+      userAgent: user.userAgent,
+    });
+
+    return results;
+  }
+
+  async listDocuments(grnId: string) {
+    await this.findOne(grnId);
+
+    return this.prisma.documentAttachment.findMany({
+      where: {
+        documentType: 'GoodsReceipt',
+        documentId: grnId,
+        deletedAt: null,
+      },
+      include: {
+        uploadedBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async deleteDocument(grnId: string, attachmentId: string, user: UserPayload) {
+    const grn = await this.findOne(grnId);
+    if (!GRN_DOC_EDITABLE_STATUSES.includes(grn.status as DocumentStatus)) {
+      throw new BadRequestException(
+        'Documents can only be removed from DRAFT or RETURNED goods receipts',
+      );
+    }
+
+    const attachment = await this.prisma.documentAttachment.findFirst({
+      where: {
+        id: attachmentId,
+        documentType: 'GoodsReceipt',
+        documentId: grnId,
+        deletedAt: null,
+      },
+    });
+    if (!attachment) throw new NotFoundException('Document not found');
+
+    await this.prisma.documentAttachment.update({
+      where: { id: attachmentId },
+      data: { deletedAt: new Date() },
+    });
+
+    await this.minioSvc.deleteFile(attachment.storageKey);
+
+    await this.auditSvc.log({
+      userId: user.id,
+      userEmail: user.email,
+      action: 'SOFT_DELETE',
+      module: 'GOODS_RECEIPTS',
+      resource: 'DocumentAttachment',
+      resourceId: attachmentId,
+      ipAddress: user.ipAddress,
+      userAgent: user.userAgent,
+    });
   }
 
   async softDelete(id: string, user: UserPayload) {

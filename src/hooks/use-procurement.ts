@@ -7,6 +7,7 @@ const VENDORS_KEY = 'vendors';
 const RFQ_KEY = 'rfqs';
 const PAF_KEY = 'paf';
 const GRN_KEY = 'goods-receipts';
+const INVOICE_KEY = 'vendor-invoices';
 const CONTRACTS_KEY = 'contracts';
 
 // ── Purchase Requisitions ─────────────────────────────────────────────────────
@@ -126,8 +127,35 @@ export function useApproveGoodsReceipt() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, comment }: { id: string; comment?: string }) => api.approveGoodsReceipt(id, comment),
-    onSuccess: () => {
+    onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: [GRN_KEY] });
+      qc.invalidateQueries({ queryKey: [GRN_KEY, id] });
+      qc.invalidateQueries({ queryKey: ['workflow-pending'] });
+    },
+  });
+}
+
+export function useRejectGoodsReceipt() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, comment }: { id: string; comment: string }) =>
+      api.rejectGoodsReceipt(id, comment),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: [GRN_KEY] });
+      qc.invalidateQueries({ queryKey: [GRN_KEY, id] });
+      qc.invalidateQueries({ queryKey: ['workflow-pending'] });
+    },
+  });
+}
+
+export function useReturnGoodsReceipt() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, comment }: { id: string; comment: string }) =>
+      api.returnGoodsReceipt(id, comment),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: [GRN_KEY] });
+      qc.invalidateQueries({ queryKey: [GRN_KEY, id] });
       qc.invalidateQueries({ queryKey: ['workflow-pending'] });
     },
   });
@@ -307,6 +335,79 @@ export function useCreateGoodsReceipt() {
   return useMutation({
     mutationFn: (dto: Record<string, unknown>) => api.createGoodsReceipt(dto),
     onSuccess: () => qc.invalidateQueries({ queryKey: [GRN_KEY] }),
+  });
+}
+
+export function useUpdateGoodsReceipt() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: string; dto: Record<string, unknown> }) =>
+      api.updateGoodsReceipt(id, dto),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: [GRN_KEY] });
+      qc.invalidateQueries({ queryKey: [GRN_KEY, id] });
+    },
+  });
+}
+
+export function useSubmitGoodsReceipt() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.submitGoodsReceipt(id),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: [GRN_KEY] });
+      qc.invalidateQueries({ queryKey: [GRN_KEY, id] });
+      qc.invalidateQueries({ queryKey: ["workflow-pending"] });
+    },
+  });
+}
+
+// ── Vendor Invoices ──────────────────────────────────────────────────────────
+
+export function useVendorInvoices(query = {}) {
+  return useQuery({
+    queryKey: [INVOICE_KEY, query],
+    queryFn: () => api.getVendorInvoices(query),
+  });
+}
+
+export function useVendorInvoice(id: string) {
+  return useQuery({
+    queryKey: [INVOICE_KEY, id],
+    queryFn: () => api.getVendorInvoice(id),
+    enabled: !!id,
+  });
+}
+
+export function useCreateVendorInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: Record<string, unknown>) => api.createVendorInvoice(dto),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [INVOICE_KEY] }),
+  });
+}
+
+export function useSubmitVendorInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.submitVendorInvoice(id),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: [INVOICE_KEY] });
+      qc.invalidateQueries({ queryKey: [INVOICE_KEY, id] });
+      qc.invalidateQueries({ queryKey: ['workflow-pending'] });
+    },
+  });
+}
+
+export function useApproveVendorInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, comment }: { id: string; comment?: string }) =>
+      api.approveVendorInvoice(id, comment),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [INVOICE_KEY] });
+      qc.invalidateQueries({ queryKey: ['workflow-pending'] });
+    },
   });
 }
 

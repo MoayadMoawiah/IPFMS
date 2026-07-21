@@ -11,6 +11,7 @@ export function useProcessDocumentApproval() {
       qc.invalidateQueries({ queryKey: ['purchase-orders'] });
       qc.invalidateQueries({ queryKey: ['goods-receipts'] });
       qc.invalidateQueries({ queryKey: ['payment-vouchers'] });
+      qc.invalidateQueries({ queryKey: ['payment-requests'] });
       qc.invalidateQueries({ queryKey: ['rfqs'] });
     },
   });

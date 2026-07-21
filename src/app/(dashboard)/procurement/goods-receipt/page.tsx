@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
-import { AlertCircle, PackageCheck } from "lucide-react";
+import { AlertCircle, PackageCheck, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { LoadingSkeleton } from "@/components/shared/loading-skeleton";
+import { PermissionGate } from "@/components/auth/permission-gate";
 import { useGoodsReceipts } from "@/hooks/use-procurement";
 import { getPaginatedItems } from "@/lib/api/pagination";
 import { formatDate } from "@/lib/formatters";
@@ -16,7 +18,6 @@ interface GrnRow {
   serialNumber: string;
   status: string;
   receiptDate: string;
-  po?: { serialNumber?: string } | null;
   grant?: { code?: string } | null;
   receivedBy?: { firstName?: string; lastName?: string } | null;
 }
@@ -33,11 +34,6 @@ const columns: ColumnDef<GrnRow>[] = [
         {row.original.serialNumber}
       </Link>
     ),
-  },
-  {
-    accessorKey: "po",
-    header: "PO",
-    cell: ({ row }) => row.original.po?.serialNumber ?? "—",
   },
   {
     accessorKey: "grant",
@@ -72,12 +68,22 @@ export default function GoodsReceiptPage() {
     <div>
       <PageHeader
         title="Goods Receipt"
-        description="Warehouse goods receiving and quality inspection"
+        description="Record warehouse receipts against issued POs (procurement)"
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Procurement" },
           { label: "Goods Receipt" },
         ]}
+        actions={
+          <PermissionGate permission="GOODS_RECEIPTS:CREATE">
+            <Button asChild>
+              <Link href="/procurement/goods-receipt/new">
+                <Plus className="h-4 w-4" />
+                New GRN
+              </Link>
+            </Button>
+          </PermissionGate>
+        }
       />
 
       {isLoading && <LoadingSkeleton variant="table" />}

@@ -51,6 +51,48 @@ let PurchaseOrdersService = class PurchaseOrdersService {
                 roles: { include: { role: { select: { id: true, name: true } } } },
             },
         };
+        this.poDetailInclude = {
+            vendor: {
+                include: {
+                    bankAccounts: { orderBy: { isPrimary: 'desc' } },
+                },
+            },
+            grant: true,
+            rfq: { select: { id: true, serialNumber: true, title: true, status: true } },
+            paf: { select: { id: true, status: true, recommendedVendorId: true } },
+            pr: {
+                select: {
+                    id: true,
+                    serialNumber: true,
+                    title: true,
+                    requestedBy: this.userWithRoles,
+                },
+            },
+            items: true,
+            workflow: {
+                include: {
+                    template: { select: { id: true } },
+                    steps: {
+                        orderBy: { stepNumber: 'asc' },
+                        include: {
+                            digitalSignature: {
+                                include: { user: this.userWithRoles },
+                            },
+                        },
+                    },
+                    actions: {
+                        include: { actor: this.userWithRoles },
+                        orderBy: { actionAt: 'asc' },
+                    },
+                },
+            },
+            goodsReceipts: {
+                select: { id: true, serialNumber: true, status: true, receiptDate: true },
+            },
+            invoices: {
+                select: { id: true, serialNumber: true, status: true, totalAmount: true, currency: true },
+            },
+        };
     }
     async findAll(query) {
         const { page, limit } = (0, pagination_dto_1.parsePagination)(query);
@@ -83,51 +125,36 @@ let PurchaseOrdersService = class PurchaseOrdersService {
         ]);
         return (0, pagination_dto_1.buildPaginationResponse)(data, total, page, limit);
     }
+    async resolvePurchaseOrderId(idOrPrefix) {
+        const exact = await this.prisma.purchaseOrder.findFirst({
+            where: { id: idOrPrefix, deletedAt: null },
+            select: { id: true },
+        });
+        if (exact)
+            return exact.id;
+        if (idOrPrefix.length >= 10 && idOrPrefix.length < 25) {
+            const prefixMatches = await this.prisma.purchaseOrder.findMany({
+                where: { id: { startsWith: idOrPrefix }, deletedAt: null },
+                select: { id: true },
+                take: 2,
+            });
+            if (prefixMatches.length === 1)
+                return prefixMatches[0].id;
+        }
+        const bySerial = await this.prisma.purchaseOrder.findFirst({
+            where: { serialNumber: idOrPrefix, deletedAt: null },
+            select: { id: true },
+        });
+        return bySerial?.id ?? null;
+    }
     async findOne(id, user) {
-        const po = await this.prisma.purchaseOrder.findUnique({
-            where: { id, deletedAt: null },
-            include: {
-                vendor: {
-                    include: {
-                        bankAccounts: { orderBy: { isPrimary: 'desc' } },
-                    },
-                },
-                grant: true,
-                rfq: { select: { id: true, serialNumber: true, title: true, status: true } },
-                paf: { select: { id: true, status: true, recommendedVendorId: true } },
-                pr: {
-                    select: {
-                        id: true,
-                        serialNumber: true,
-                        title: true,
-                        requestedBy: this.userWithRoles,
-                    },
-                },
-                items: true,
-                workflow: {
-                    include: {
-                        template: { select: { id: true } },
-                        steps: {
-                            orderBy: { stepNumber: 'asc' },
-                            include: {
-                                digitalSignature: {
-                                    include: { user: this.userWithRoles },
-                                },
-                            },
-                        },
-                        actions: {
-                            include: { actor: this.userWithRoles },
-                            orderBy: { actionAt: 'asc' },
-                        },
-                    },
-                },
-                goodsReceipts: {
-                    select: { id: true, serialNumber: true, status: true, receiptDate: true },
-                },
-                invoices: {
-                    select: { id: true, serialNumber: true, status: true, totalAmount: true, currency: true },
-                },
-            },
+        const resolvedId = await this.resolvePurchaseOrderId(id);
+        if (!resolvedId) {
+            throw new common_1.NotFoundException(`Purchase Order ${id} not found`);
+        }
+        const po = await this.prisma.purchaseOrder.findFirst({
+            where: { id: resolvedId, deletedAt: null },
+            include: this.poDetailInclude,
         });
         if (!po)
             throw new common_1.NotFoundException(`Purchase Order ${id} not found`);
@@ -262,8 +289,12 @@ let PurchaseOrdersService = class PurchaseOrdersService {
             throw new common_1.BadRequestException('Only APPROVED POs can be issued');
         }
         return this.prisma.purchaseOrder.update({
-            where: { id },
-            data: { status: 'ISSUED', issuedById: user.id, issuedAt: new Date() },
+            where: { id: po.id },
+            data: {
+                status: client_1.DocumentStatus.ISSUED,
+                issuedById: user.id,
+                issuedAt: new Date(),
+            },
         });
     }
     async getPaymentStatus(id) {
@@ -279,7 +310,7 @@ let PurchaseOrdersService = class PurchaseOrdersService {
     }
     async softDelete(id, user) {
         const po = await this.findOne(id);
-        if (po.status === client_1.DocumentStatus.APPROVED || po.status === 'ISSUED') {
+        if (po.status === client_1.DocumentStatus.APPROVED || po.status === client_1.DocumentStatus.ISSUED) {
             throw new common_1.BadRequestException('Cannot delete an approved or issued PO');
         }
         await this.prisma.purchaseOrder.update({ where: { id }, data: { deletedAt: new Date() } });

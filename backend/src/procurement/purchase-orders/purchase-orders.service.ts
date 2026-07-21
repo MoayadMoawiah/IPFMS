@@ -82,51 +82,82 @@ export class PurchaseOrdersService {
     },
   };
 
-  async findOne(id: string, user?: UserPayload) {
-    const po = await this.prisma.purchaseOrder.findUnique({
-      where: { id, deletedAt: null },
+  private readonly poDetailInclude = {
+    vendor: {
       include: {
-        vendor: {
+        bankAccounts: { orderBy: { isPrimary: 'desc' as const } },
+      },
+    },
+    grant: true,
+    rfq: { select: { id: true, serialNumber: true, title: true, status: true } },
+    paf: { select: { id: true, status: true, recommendedVendorId: true } },
+    pr: {
+      select: {
+        id: true,
+        serialNumber: true,
+        title: true,
+        requestedBy: this.userWithRoles,
+      },
+    },
+    items: true,
+    workflow: {
+      include: {
+        template: { select: { id: true } },
+        steps: {
+          orderBy: { stepNumber: 'asc' as const },
           include: {
-            bankAccounts: { orderBy: { isPrimary: 'desc' } },
-          },
-        },
-        grant: true,
-        rfq: { select: { id: true, serialNumber: true, title: true, status: true } },
-        paf: { select: { id: true, status: true, recommendedVendorId: true } },
-        pr: {
-          select: {
-            id: true,
-            serialNumber: true,
-            title: true,
-            requestedBy: this.userWithRoles,
-          },
-        },
-        items: true,
-        workflow: {
-          include: {
-            template: { select: { id: true } },
-            steps: {
-              orderBy: { stepNumber: 'asc' },
-              include: {
-                digitalSignature: {
-                  include: { user: this.userWithRoles },
-                },
-              },
-            },
-            actions: {
-              include: { actor: this.userWithRoles },
-              orderBy: { actionAt: 'asc' },
+            digitalSignature: {
+              include: { user: this.userWithRoles },
             },
           },
         },
-        goodsReceipts: {
-          select: { id: true, serialNumber: true, status: true, receiptDate: true },
-        },
-        invoices: {
-          select: { id: true, serialNumber: true, status: true, totalAmount: true, currency: true },
+        actions: {
+          include: { actor: this.userWithRoles },
+          orderBy: { actionAt: 'asc' as const },
         },
       },
+    },
+    goodsReceipts: {
+      select: { id: true, serialNumber: true, status: true, receiptDate: true },
+    },
+    invoices: {
+      select: { id: true, serialNumber: true, status: true, totalAmount: true, currency: true },
+    },
+  };
+
+  /** Resolve full PO id when print/PDF links truncate the cuid in the URL. */
+  private async resolvePurchaseOrderId(idOrPrefix: string): Promise<string | null> {
+    const exact = await this.prisma.purchaseOrder.findFirst({
+      where: { id: idOrPrefix, deletedAt: null },
+      select: { id: true },
+    });
+    if (exact) return exact.id;
+
+    if (idOrPrefix.length >= 10 && idOrPrefix.length < 25) {
+      const prefixMatches = await this.prisma.purchaseOrder.findMany({
+        where: { id: { startsWith: idOrPrefix }, deletedAt: null },
+        select: { id: true },
+        take: 2,
+      });
+      if (prefixMatches.length === 1) return prefixMatches[0].id;
+    }
+
+    const bySerial = await this.prisma.purchaseOrder.findFirst({
+      where: { serialNumber: idOrPrefix, deletedAt: null },
+      select: { id: true },
+    });
+    return bySerial?.id ?? null;
+  }
+
+  async findOne(id: string, user?: UserPayload) {
+    const resolvedId = await this.resolvePurchaseOrderId(id);
+    if (!resolvedId) {
+      throw new NotFoundException(`Purchase Order ${id} not found`);
+    }
+
+    const po = await this.prisma.purchaseOrder.findFirst({
+      where: { id: resolvedId, deletedAt: null },
+      include: this.poDetailInclude,
     });
     if (!po) throw new NotFoundException(`Purchase Order ${id} not found`);
 
@@ -287,8 +318,12 @@ export class PurchaseOrdersService {
       throw new BadRequestException('Only APPROVED POs can be issued');
     }
     return this.prisma.purchaseOrder.update({
-      where: { id },
-      data: { status: 'ISSUED' as any, issuedById: user.id, issuedAt: new Date() },
+      where: { id: po.id },
+      data: {
+        status: DocumentStatus.ISSUED,
+        issuedById: user.id,
+        issuedAt: new Date(),
+      },
     });
   }
 
@@ -306,7 +341,7 @@ export class PurchaseOrdersService {
 
   async softDelete(id: string, user: UserPayload) {
     const po = await this.findOne(id);
-    if (po.status === DocumentStatus.APPROVED || po.status === 'ISSUED' as any) {
+    if (po.status === DocumentStatus.APPROVED || po.status === DocumentStatus.ISSUED) {
       throw new BadRequestException('Cannot delete an approved or issued PO');
     }
     await this.prisma.purchaseOrder.update({ where: { id }, data: { deletedAt: new Date() } });

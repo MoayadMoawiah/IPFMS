@@ -79,6 +79,7 @@ const navigation: NavItem[] = [
       { title: "Evaluation Committee", href: "/procurement/evaluation", icon: FileCheck },
       { title: "Purchase Orders", href: "/procurement/purchase-orders", icon: ShoppingCart },
       { title: "Goods Receipt", href: "/procurement/goods-receipt", icon: PackageCheck },
+      { title: "Vendor Invoices", href: "/procurement/vendor-invoices", icon: Receipt },
       { title: "Inventory", href: "/procurement/inventory", icon: Package },
     ],
   },
@@ -86,6 +87,7 @@ const navigation: NavItem[] = [
     title: "Finance",
     icon: Wallet,
     children: [
+      { title: "Payment Request", href: "/finance/payment-requests", icon: FileText },
       { title: "Payment Voucher", href: "/finance/payment-vouchers", icon: Receipt },
       { title: "Cheque Management", href: "/finance/cheques", icon: CreditCard },
       { title: "Bank Transfer", href: "/finance/bank-transfers", icon: ArrowLeftRight },

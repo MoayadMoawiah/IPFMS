@@ -9,10 +9,10 @@ export declare class NotificationsController {
             id: string;
             createdAt: Date;
             type: import(".prisma/client").$Enums.NotificationType;
-            title: string;
-            message: string;
             documentType: string | null;
             documentId: string | null;
+            title: string;
+            message: string;
             actionUrl: string | null;
             isRead: boolean;
             readAt: Date | null;
@@ -34,10 +34,10 @@ export declare class NotificationsController {
         id: string;
         createdAt: Date;
         type: import(".prisma/client").$Enums.NotificationType;
-        title: string;
-        message: string;
         documentType: string | null;
         documentId: string | null;
+        title: string;
+        message: string;
         actionUrl: string | null;
         isRead: boolean;
         readAt: Date | null;

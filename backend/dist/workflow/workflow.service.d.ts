@@ -224,9 +224,9 @@ export declare class WorkflowService {
             label: string;
             href: string;
             id: string;
-            title: string;
             status: import(".prisma/client").$Enums.DocumentStatus;
             serialNumber: string;
+            title: string;
         } | {
             title: string;
             label: string;
@@ -235,6 +235,14 @@ export declare class WorkflowService {
             status: import(".prisma/client").$Enums.DocumentStatus;
             serialNumber: string;
             payeeName: string;
+        } | {
+            title: string;
+            label: string;
+            href: string;
+            id: string;
+            status: import(".prisma/client").$Enums.InvoiceStatus;
+            serialNumber: string;
+            invoiceNumber: string;
         } | null;
     }[]>;
     resolveRoleNames(roleIds: string[]): Promise<Map<string, string>>;

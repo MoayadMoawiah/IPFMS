@@ -196,6 +196,11 @@ export async function createGoodsReceipt(dto: Record<string, unknown>) {
   return data.data;
 }
 
+export async function updateGoodsReceipt(id: string, dto: Record<string, unknown>) {
+  const { data } = await apiClient.patch(`/procurement/goods-receipts/${id}`, dto);
+  return data.data;
+}
+
 export async function submitGoodsReceipt(id: string) {
   const { data } = await apiClient.post(`/procurement/goods-receipts/${id}/submit`);
   return data.data;
@@ -204,6 +209,49 @@ export async function submitGoodsReceipt(id: string) {
 export async function approveGoodsReceipt(id: string, comment?: string) {
   const { data } = await apiClient.post(`/procurement/goods-receipts/${id}/approve`, { comment });
   return data.data;
+}
+
+export async function rejectGoodsReceipt(id: string, comment: string) {
+  const { data } = await apiClient.post(`/procurement/goods-receipts/${id}/reject`, { comment });
+  return data.data;
+}
+
+export async function returnGoodsReceipt(id: string, comment: string) {
+  const { data } = await apiClient.post(`/procurement/goods-receipts/${id}/return`, { comment });
+  return data.data;
+}
+
+// ── Vendor Invoices ───────────────────────────────────────────────────────────
+
+export async function getVendorInvoices(query = {}) {
+  const { data } = await apiClient.get('/procurement/vendor-invoices', { params: query });
+  return data.data;
+}
+
+export async function getVendorInvoice(id: string) {
+  const { data } = await apiClient.get(`/procurement/vendor-invoices/${id}`);
+  return data.data;
+}
+
+export async function createVendorInvoice(dto: Record<string, unknown>) {
+  const { data } = await apiClient.post('/procurement/vendor-invoices', dto);
+  return data.data;
+}
+
+export async function submitVendorInvoice(id: string) {
+  const { data } = await apiClient.post(`/procurement/vendor-invoices/${id}/submit`);
+  return data.data;
+}
+
+export async function approveVendorInvoice(id: string, comment?: string) {
+  const { data } = await apiClient.post(`/procurement/vendor-invoices/${id}/approve`, {
+    comment,
+  });
+  return data.data;
+}
+
+export async function deleteVendorInvoice(id: string) {
+  await apiClient.delete(`/procurement/vendor-invoices/${id}`);
 }
 
 // ── Contracts ─────────────────────────────────────────────────────────────────

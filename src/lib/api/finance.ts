@@ -39,6 +39,43 @@ export async function getTrialBalance(params: { fromDate: string; toDate: string
   return data.data;
 }
 
+// ── Payment Requests ─────────────────────────────────────────────────────────
+
+export async function getPaymentRequests(query = {}) {
+  const { data } = await apiClient.get('/finance/payment-requests', { params: query });
+  return data.data;
+}
+
+export async function getPaymentRequest(id: string) {
+  const { data } = await apiClient.get(`/finance/payment-requests/${id}`);
+  return data.data;
+}
+
+export async function createPaymentRequest(dto: Record<string, unknown>) {
+  const { data } = await apiClient.post('/finance/payment-requests', dto);
+  return data.data;
+}
+
+export async function updatePaymentRequest(id: string, dto: Record<string, unknown>) {
+  const { data } = await apiClient.patch(`/finance/payment-requests/${id}`, dto);
+  return data.data;
+}
+
+export async function submitPaymentRequest(id: string) {
+  const { data } = await apiClient.post(`/finance/payment-requests/${id}/submit`);
+  return data.data;
+}
+
+export async function approvePaymentRequest(id: string, comment?: string) {
+  const { data } = await apiClient.post(`/finance/payment-requests/${id}/approve`, { comment });
+  return data.data;
+}
+
+export async function getPaymentRequestCashReceipt(id: string) {
+  const { data } = await apiClient.get(`/finance/payment-requests/${id}/cash-receipt`);
+  return data.data;
+}
+
 // ── Payment Vouchers ─────────────────────────────────────────────────────────
 
 export async function getPaymentVouchers(query = {}) {

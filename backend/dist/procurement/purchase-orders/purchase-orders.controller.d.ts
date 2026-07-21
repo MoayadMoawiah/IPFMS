@@ -5,47 +5,47 @@ export declare class PurchaseOrdersController {
     constructor(svc: PurchaseOrdersService);
     findAll(q: any): Promise<{
         data: ({
-            vendor: {
-                id: string;
-                name: string;
-            };
             grant: {
                 id: string;
                 name: string;
                 code: string;
             };
+            vendor: {
+                id: string;
+                name: string;
+            };
             _count: {
-                items: number;
                 goodsReceipts: number;
+                items: number;
             };
         } & {
+            currency: string;
             id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            deletedAt: Date | null;
+            createdById: string | null;
+            status: import(".prisma/client").$Enums.DocumentStatus;
             serialNumber: string;
+            grantId: string;
+            budgetLineId: string | null;
+            title: string;
+            workflowInstanceId: string | null;
             prId: string | null;
             rfqId: string | null;
             pafId: string | null;
             vendorId: string;
-            grantId: string;
-            budgetLineId: string | null;
             contractId: string | null;
-            title: string;
             deliveryAddress: string | null;
             deliveryDate: Date | null;
-            currency: string;
             subtotal: import(".prisma/client/runtime/library").Decimal;
             taxAmount: import(".prisma/client/runtime/library").Decimal;
             totalAmount: import(".prisma/client/runtime/library").Decimal;
             paidAmount: import(".prisma/client/runtime/library").Decimal;
             terms: string | null;
             notes: string | null;
-            status: import(".prisma/client").$Enums.DocumentStatus;
-            workflowInstanceId: string | null;
             issuedById: string | null;
             issuedAt: Date | null;
-            createdById: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date | null;
         })[];
         meta: {
             total: number;
@@ -55,97 +55,97 @@ export declare class PurchaseOrdersController {
         };
     }>;
     create(dto: any, user: UserPayload): Promise<{
-        vendor: {
-            id: string;
-            createdById: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date | null;
-            registrationNumber: string;
-            name: string;
-            arabicName: string | null;
-            vendorType: import(".prisma/client").$Enums.VendorType;
-            country: string | null;
-            address: string | null;
-            city: string | null;
-            phone: string | null;
-            email: string | null;
-            website: string | null;
-            taxNumber: string | null;
-            isBlacklisted: boolean;
-            blacklistReason: string | null;
-            blacklistDate: Date | null;
-            rating: import(".prisma/client/runtime/library").Decimal;
-        };
         grant: {
-            id: string;
             currency: string;
-            status: import(".prisma/client").$Enums.GrantStatus;
-            createdById: string | null;
+            id: string;
+            name: string;
+            description: string | null;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
-            name: string;
             code: string;
+            startDate: Date;
+            endDate: Date;
+            createdById: string | null;
+            status: import(".prisma/client").$Enums.GrantStatus;
+            conditions: string | null;
             donorId: string;
             fiscalYearId: string | null;
             totalBudget: import(".prisma/client/runtime/library").Decimal;
             committedAmount: import(".prisma/client/runtime/library").Decimal;
             spentAmount: import(".prisma/client/runtime/library").Decimal;
-            startDate: Date;
-            endDate: Date;
             signedDate: Date | null;
-            description: string | null;
             objectives: string | null;
-            conditions: string | null;
             coverageArea: string | null;
             targetBeneficiaries: number | null;
             reportingRequirements: string | null;
             grantManagerId: string | null;
             projectCoordinatorId: string | null;
         };
-        items: {
+        vendor: {
             id: string;
-            budgetLineId: string | null;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
+            email: string | null;
+            arabicName: string | null;
+            phone: string | null;
+            deletedAt: Date | null;
+            createdById: string | null;
+            country: string | null;
+            address: string | null;
+            website: string | null;
+            registrationNumber: string;
+            vendorType: import(".prisma/client").$Enums.VendorType;
+            city: string | null;
+            taxNumber: string | null;
+            isBlacklisted: boolean;
+            blacklistReason: string | null;
+            blacklistDate: Date | null;
+            rating: import(".prisma/client/runtime/library").Decimal;
+        };
+        items: {
+            id: string;
             description: string;
+            createdAt: Date;
+            updatedAt: Date;
+            budgetLineId: string | null;
+            poId: string;
             specification: string | null;
             unit: string;
             orderedQuantity: import(".prisma/client/runtime/library").Decimal;
             receivedQuantity: import(".prisma/client/runtime/library").Decimal;
             unitPrice: import(".prisma/client/runtime/library").Decimal;
             totalPrice: import(".prisma/client/runtime/library").Decimal;
-            poId: string;
         }[];
     } & {
+        currency: string;
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+        createdById: string | null;
+        status: import(".prisma/client").$Enums.DocumentStatus;
         serialNumber: string;
+        grantId: string;
+        budgetLineId: string | null;
+        title: string;
+        workflowInstanceId: string | null;
         prId: string | null;
         rfqId: string | null;
         pafId: string | null;
         vendorId: string;
-        grantId: string;
-        budgetLineId: string | null;
         contractId: string | null;
-        title: string;
         deliveryAddress: string | null;
         deliveryDate: Date | null;
-        currency: string;
         subtotal: import(".prisma/client/runtime/library").Decimal;
         taxAmount: import(".prisma/client/runtime/library").Decimal;
         totalAmount: import(".prisma/client/runtime/library").Decimal;
         paidAmount: import(".prisma/client/runtime/library").Decimal;
         terms: string | null;
         notes: string | null;
-        status: import(".prisma/client").$Enums.DocumentStatus;
-        workflowInstanceId: string | null;
         issuedById: string | null;
         issuedAt: Date | null;
-        createdById: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
     }>;
     findOne(id: string, user: UserPayload): Promise<{
         createdBy: {
@@ -166,103 +166,82 @@ export declare class PurchaseOrdersController {
             })[];
         } | null;
         approvalContext: import("../../workflow/workflow.service").ApprovalContext | null;
-        pr: {
-            id: string;
-            serialNumber: string;
-            title: string;
-            requestedBy: {
-                id: string;
-                email: string;
-                firstName: string;
-                lastName: string;
-                roles: ({
-                    role: {
-                        id: string;
-                        name: string;
-                    };
-                } & {
-                    userId: string;
-                    roleId: string;
-                    grantedBy: string | null;
-                    grantedAt: Date;
-                })[];
-            };
-        } | null;
-        rfq: {
-            id: string;
-            serialNumber: string;
-            title: string;
-            status: import(".prisma/client").$Enums.RfqStatus;
-        } | null;
-        paf: {
-            id: string;
-            status: import(".prisma/client").$Enums.DocumentStatus;
-            recommendedVendorId: string | null;
-        } | null;
-        vendor: {
-            bankAccounts: {
-                id: string;
-                vendorId: string;
-                currency: string;
-                createdAt: Date;
-                updatedAt: Date;
-                country: string | null;
-                isPrimary: boolean;
-                bankName: string;
-                accountName: string;
-                accountNumber: string;
-                iban: string | null;
-                swiftCode: string | null;
-            }[];
-        } & {
-            id: string;
-            createdById: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date | null;
-            registrationNumber: string;
-            name: string;
-            arabicName: string | null;
-            vendorType: import(".prisma/client").$Enums.VendorType;
-            country: string | null;
-            address: string | null;
-            city: string | null;
-            phone: string | null;
-            email: string | null;
-            website: string | null;
-            taxNumber: string | null;
-            isBlacklisted: boolean;
-            blacklistReason: string | null;
-            blacklistDate: Date | null;
-            rating: import(".prisma/client/runtime/library").Decimal;
-        };
         grant: {
-            id: string;
             currency: string;
-            status: import(".prisma/client").$Enums.GrantStatus;
-            createdById: string | null;
+            id: string;
+            name: string;
+            description: string | null;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
-            name: string;
             code: string;
+            startDate: Date;
+            endDate: Date;
+            createdById: string | null;
+            status: import(".prisma/client").$Enums.GrantStatus;
+            conditions: string | null;
             donorId: string;
             fiscalYearId: string | null;
             totalBudget: import(".prisma/client/runtime/library").Decimal;
             committedAmount: import(".prisma/client/runtime/library").Decimal;
             spentAmount: import(".prisma/client/runtime/library").Decimal;
-            startDate: Date;
-            endDate: Date;
             signedDate: Date | null;
-            description: string | null;
             objectives: string | null;
-            conditions: string | null;
             coverageArea: string | null;
             targetBeneficiaries: number | null;
             reportingRequirements: string | null;
             grantManagerId: string | null;
             projectCoordinatorId: string | null;
         };
+        vendor: {
+            bankAccounts: {
+                currency: string;
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                vendorId: string;
+                country: string | null;
+                isPrimary: boolean;
+                accountNumber: string;
+                bankName: string;
+                accountName: string;
+                iban: string | null;
+                swiftCode: string | null;
+            }[];
+        } & {
+            id: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            email: string | null;
+            arabicName: string | null;
+            phone: string | null;
+            deletedAt: Date | null;
+            createdById: string | null;
+            country: string | null;
+            address: string | null;
+            website: string | null;
+            registrationNumber: string;
+            vendorType: import(".prisma/client").$Enums.VendorType;
+            city: string | null;
+            taxNumber: string | null;
+            isBlacklisted: boolean;
+            blacklistReason: string | null;
+            blacklistDate: Date | null;
+            rating: import(".prisma/client/runtime/library").Decimal;
+        };
+        rfq: {
+            id: string;
+            status: import(".prisma/client").$Enums.RfqStatus;
+            serialNumber: string;
+            title: string;
+        } | null;
+        goodsReceipts: {
+            id: string;
+            status: import(".prisma/client").$Enums.DocumentStatus;
+            serialNumber: string;
+            receiptDate: Date;
+        }[];
         workflow: ({
             steps: ({
                 digitalSignature: ({
@@ -284,34 +263,34 @@ export declare class PurchaseOrdersController {
                         })[];
                     };
                 } & {
+                    userId: string;
                     id: string;
                     createdAt: Date;
-                    documentType: string;
-                    userId: string;
-                    documentId: string;
                     action: string;
                     ipAddress: string;
                     userAgent: string;
+                    documentType: string;
+                    documentId: string;
                     deviceFingerprint: string | null;
                     signedAt: Date;
                     certificate: string | null;
                 }) | null;
             } & {
+                comment: string | null;
                 id: string;
-                status: import(".prisma/client").$Enums.StepStatus;
                 createdAt: Date;
                 updatedAt: Date;
+                action: string | null;
                 stepNumber: number;
+                status: import(".prisma/client").$Enums.StepStatus;
                 startedAt: Date | null;
                 completedAt: Date | null;
-                instanceId: string;
                 stepName: string;
                 assignedUserId: string | null;
                 assignedRoleId: string | null;
                 dueAt: Date | null;
-                action: string | null;
-                comment: string | null;
                 digitalSignatureId: string | null;
+                instanceId: string;
             })[];
             template: {
                 id: string;
@@ -335,110 +314,131 @@ export declare class PurchaseOrdersController {
                     })[];
                 };
             } & {
-                id: string;
-                actionAt: Date;
-                instanceId: string;
-                action: import(".prisma/client").$Enums.WorkflowAction;
                 comment: string | null;
+                id: string;
+                action: import(".prisma/client").$Enums.WorkflowAction;
                 digitalSignatureId: string | null;
+                instanceId: string;
+                actionAt: Date;
                 instanceStepId: string | null;
                 actorId: string;
             })[];
         } & {
             id: string;
-            status: import(".prisma/client").$Enums.WorkflowStatus;
             createdAt: Date;
             updatedAt: Date;
             documentType: string;
-            templateId: string;
             documentId: string;
             currentStepNumber: number;
+            status: import(".prisma/client").$Enums.WorkflowStatus;
             startedAt: Date;
             completedAt: Date | null;
+            templateId: string;
         }) | null;
         items: {
             id: string;
-            budgetLineId: string | null;
+            description: string;
             createdAt: Date;
             updatedAt: Date;
-            description: string;
+            budgetLineId: string | null;
+            poId: string;
             specification: string | null;
             unit: string;
             orderedQuantity: import(".prisma/client/runtime/library").Decimal;
             receivedQuantity: import(".prisma/client/runtime/library").Decimal;
             unitPrice: import(".prisma/client/runtime/library").Decimal;
             totalPrice: import(".prisma/client/runtime/library").Decimal;
-            poId: string;
         }[];
-        goodsReceipts: {
+        pr: {
             id: string;
             serialNumber: string;
+            title: string;
+            requestedBy: {
+                id: string;
+                email: string;
+                firstName: string;
+                lastName: string;
+                roles: ({
+                    role: {
+                        id: string;
+                        name: string;
+                    };
+                } & {
+                    userId: string;
+                    roleId: string;
+                    grantedBy: string | null;
+                    grantedAt: Date;
+                })[];
+            };
+        } | null;
+        paf: {
+            id: string;
             status: import(".prisma/client").$Enums.DocumentStatus;
-            receiptDate: Date;
-        }[];
+            recommendedVendorId: string | null;
+        } | null;
         invoices: {
-            id: string;
-            serialNumber: string;
             currency: string;
-            totalAmount: import(".prisma/client/runtime/library").Decimal;
+            id: string;
             status: import(".prisma/client").$Enums.InvoiceStatus;
+            serialNumber: string;
+            totalAmount: import(".prisma/client/runtime/library").Decimal;
         }[];
+        currency: string;
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+        createdById: string | null;
+        status: import(".prisma/client").$Enums.DocumentStatus;
         serialNumber: string;
+        grantId: string;
+        budgetLineId: string | null;
+        title: string;
+        workflowInstanceId: string | null;
         prId: string | null;
         rfqId: string | null;
         pafId: string | null;
         vendorId: string;
-        grantId: string;
-        budgetLineId: string | null;
         contractId: string | null;
-        title: string;
         deliveryAddress: string | null;
         deliveryDate: Date | null;
-        currency: string;
         subtotal: import(".prisma/client/runtime/library").Decimal;
         taxAmount: import(".prisma/client/runtime/library").Decimal;
         totalAmount: import(".prisma/client/runtime/library").Decimal;
         paidAmount: import(".prisma/client/runtime/library").Decimal;
         terms: string | null;
         notes: string | null;
-        status: import(".prisma/client").$Enums.DocumentStatus;
-        workflowInstanceId: string | null;
         issuedById: string | null;
         issuedAt: Date | null;
-        createdById: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
     }>;
     submit(id: string, user: UserPayload): Promise<{
+        currency: string;
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+        createdById: string | null;
+        status: import(".prisma/client").$Enums.DocumentStatus;
         serialNumber: string;
+        grantId: string;
+        budgetLineId: string | null;
+        title: string;
+        workflowInstanceId: string | null;
         prId: string | null;
         rfqId: string | null;
         pafId: string | null;
         vendorId: string;
-        grantId: string;
-        budgetLineId: string | null;
         contractId: string | null;
-        title: string;
         deliveryAddress: string | null;
         deliveryDate: Date | null;
-        currency: string;
         subtotal: import(".prisma/client/runtime/library").Decimal;
         taxAmount: import(".prisma/client/runtime/library").Decimal;
         totalAmount: import(".prisma/client/runtime/library").Decimal;
         paidAmount: import(".prisma/client/runtime/library").Decimal;
         terms: string | null;
         notes: string | null;
-        status: import(".prisma/client").$Enums.DocumentStatus;
-        workflowInstanceId: string | null;
         issuedById: string | null;
         issuedAt: Date | null;
-        createdById: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
     }>;
     approve(id: string, body: {
         comment?: string;
@@ -446,33 +446,33 @@ export declare class PurchaseOrdersController {
         status: import(".prisma/client").$Enums.DocumentStatus;
         workflowInstance: {
             steps: {
+                comment: string | null;
                 id: string;
-                status: import(".prisma/client").$Enums.StepStatus;
                 createdAt: Date;
                 updatedAt: Date;
+                action: string | null;
                 stepNumber: number;
+                status: import(".prisma/client").$Enums.StepStatus;
                 startedAt: Date | null;
                 completedAt: Date | null;
-                instanceId: string;
                 stepName: string;
                 assignedUserId: string | null;
                 assignedRoleId: string | null;
                 dueAt: Date | null;
-                action: string | null;
-                comment: string | null;
                 digitalSignatureId: string | null;
+                instanceId: string;
             }[];
         } & {
             id: string;
-            status: import(".prisma/client").$Enums.WorkflowStatus;
             createdAt: Date;
             updatedAt: Date;
             documentType: string;
-            templateId: string;
             documentId: string;
             currentStepNumber: number;
+            status: import(".prisma/client").$Enums.WorkflowStatus;
             startedAt: Date;
             completedAt: Date | null;
+            templateId: string;
         };
     }>;
     reject(id: string, body: {
@@ -481,33 +481,33 @@ export declare class PurchaseOrdersController {
         status: import(".prisma/client").$Enums.DocumentStatus;
         workflowInstance: {
             steps: {
+                comment: string | null;
                 id: string;
-                status: import(".prisma/client").$Enums.StepStatus;
                 createdAt: Date;
                 updatedAt: Date;
+                action: string | null;
                 stepNumber: number;
+                status: import(".prisma/client").$Enums.StepStatus;
                 startedAt: Date | null;
                 completedAt: Date | null;
-                instanceId: string;
                 stepName: string;
                 assignedUserId: string | null;
                 assignedRoleId: string | null;
                 dueAt: Date | null;
-                action: string | null;
-                comment: string | null;
                 digitalSignatureId: string | null;
+                instanceId: string;
             }[];
         } & {
             id: string;
-            status: import(".prisma/client").$Enums.WorkflowStatus;
             createdAt: Date;
             updatedAt: Date;
             documentType: string;
-            templateId: string;
             documentId: string;
             currentStepNumber: number;
+            status: import(".prisma/client").$Enums.WorkflowStatus;
             startedAt: Date;
             completedAt: Date | null;
+            templateId: string;
         };
     }>;
     return_(id: string, body: {
@@ -516,63 +516,63 @@ export declare class PurchaseOrdersController {
         status: import(".prisma/client").$Enums.DocumentStatus;
         workflowInstance: {
             steps: {
+                comment: string | null;
                 id: string;
-                status: import(".prisma/client").$Enums.StepStatus;
                 createdAt: Date;
                 updatedAt: Date;
+                action: string | null;
                 stepNumber: number;
+                status: import(".prisma/client").$Enums.StepStatus;
                 startedAt: Date | null;
                 completedAt: Date | null;
-                instanceId: string;
                 stepName: string;
                 assignedUserId: string | null;
                 assignedRoleId: string | null;
                 dueAt: Date | null;
-                action: string | null;
-                comment: string | null;
                 digitalSignatureId: string | null;
+                instanceId: string;
             }[];
         } & {
             id: string;
-            status: import(".prisma/client").$Enums.WorkflowStatus;
             createdAt: Date;
             updatedAt: Date;
             documentType: string;
-            templateId: string;
             documentId: string;
             currentStepNumber: number;
+            status: import(".prisma/client").$Enums.WorkflowStatus;
             startedAt: Date;
             completedAt: Date | null;
+            templateId: string;
         };
     }>;
     issue(id: string, user: UserPayload): Promise<{
+        currency: string;
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+        createdById: string | null;
+        status: import(".prisma/client").$Enums.DocumentStatus;
         serialNumber: string;
+        grantId: string;
+        budgetLineId: string | null;
+        title: string;
+        workflowInstanceId: string | null;
         prId: string | null;
         rfqId: string | null;
         pafId: string | null;
         vendorId: string;
-        grantId: string;
-        budgetLineId: string | null;
         contractId: string | null;
-        title: string;
         deliveryAddress: string | null;
         deliveryDate: Date | null;
-        currency: string;
         subtotal: import(".prisma/client/runtime/library").Decimal;
         taxAmount: import(".prisma/client/runtime/library").Decimal;
         totalAmount: import(".prisma/client/runtime/library").Decimal;
         paidAmount: import(".prisma/client/runtime/library").Decimal;
         terms: string | null;
         notes: string | null;
-        status: import(".prisma/client").$Enums.DocumentStatus;
-        workflowInstanceId: string | null;
         issuedById: string | null;
         issuedAt: Date | null;
-        createdById: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
     }>;
     paymentStatus(id: string): Promise<{
         totalAmount: number;
@@ -592,8 +592,8 @@ export declare class PurchaseOrdersController {
         createdAt: Date;
         deletedAt: Date | null;
         documentType: string;
-        fileUrl: string;
         documentId: string;
+        fileUrl: string;
         fileName: string;
         originalName: string;
         fileSize: number;

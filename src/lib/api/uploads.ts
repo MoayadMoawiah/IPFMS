@@ -164,3 +164,73 @@ export async function deletePurchaseOrderDocument(
     `/procurement/purchase-orders/${purchaseOrderId}/documents/${attachmentId}`,
   );
 }
+
+export async function uploadGoodsReceiptDocuments(
+  goodsReceiptId: string,
+  files: File[],
+  labels: string[],
+): Promise<DocumentAttachment[]> {
+  const form = new FormData();
+  files.forEach((f) => form.append("files", f));
+  form.append("labels", JSON.stringify(labels));
+
+  const { data } = await apiClient.post<{ data: DocumentAttachment[] }>(
+    `/procurement/goods-receipts/${goodsReceiptId}/documents`,
+    form,
+    { headers: { "Content-Type": "multipart/form-data" } },
+  );
+  return data.data;
+}
+
+export async function getGoodsReceiptDocuments(
+  goodsReceiptId: string,
+): Promise<DocumentAttachment[]> {
+  const { data } = await apiClient.get<{ data: DocumentAttachment[] }>(
+    `/procurement/goods-receipts/${goodsReceiptId}/documents`,
+  );
+  return data.data;
+}
+
+export async function deleteGoodsReceiptDocument(
+  goodsReceiptId: string,
+  attachmentId: string,
+): Promise<void> {
+  await apiClient.delete(
+    `/procurement/goods-receipts/${goodsReceiptId}/documents/${attachmentId}`,
+  );
+}
+
+export async function uploadPaymentRequestDocuments(
+  paymentRequestId: string,
+  files: File[],
+  labels: string[],
+): Promise<DocumentAttachment[]> {
+  const form = new FormData();
+  files.forEach((f) => form.append("files", f));
+  form.append("labels", JSON.stringify(labels));
+
+  const { data } = await apiClient.post<{ data: DocumentAttachment[] }>(
+    `/finance/payment-requests/${paymentRequestId}/documents`,
+    form,
+    { headers: { "Content-Type": "multipart/form-data" } },
+  );
+  return data.data;
+}
+
+export async function getPaymentRequestDocuments(
+  paymentRequestId: string,
+): Promise<DocumentAttachment[]> {
+  const { data } = await apiClient.get<{ data: DocumentAttachment[] }>(
+    `/finance/payment-requests/${paymentRequestId}/documents`,
+  );
+  return data.data;
+}
+
+export async function deletePaymentRequestDocument(
+  paymentRequestId: string,
+  attachmentId: string,
+): Promise<void> {
+  await apiClient.delete(
+    `/finance/payment-requests/${paymentRequestId}/documents/${attachmentId}`,
+  );
+}

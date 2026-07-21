@@ -3,6 +3,7 @@ import * as api from '@/lib/api/finance';
 
 const COA_KEY = 'chart-of-accounts';
 const JE_KEY = 'journal-entries';
+const PREQ_KEY = 'payment-requests';
 const PV_KEY = 'payment-vouchers';
 const BANK_KEY = 'bank-accounts';
 const DASHBOARD_KEY = 'dashboard';
@@ -55,6 +56,65 @@ export function useTrialBalance(params: { fromDate: string; toDate: string; fisc
   });
 }
 
+// ── Payment Requests ─────────────────────────────────────────────────────────
+
+export function usePaymentRequests(query = {}) {
+  return useQuery({ queryKey: [PREQ_KEY, query], queryFn: () => api.getPaymentRequests(query) });
+}
+
+export function usePaymentRequest(id: string) {
+  return useQuery({
+    queryKey: [PREQ_KEY, id],
+    queryFn: () => api.getPaymentRequest(id),
+    enabled: !!id,
+  });
+}
+
+export function useCreatePaymentRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: Record<string, unknown>) => api.createPaymentRequest(dto),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [PREQ_KEY] }),
+  });
+}
+
+export function useUpdatePaymentRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: string; dto: Record<string, unknown> }) =>
+      api.updatePaymentRequest(id, dto),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: [PREQ_KEY] });
+      qc.invalidateQueries({ queryKey: [PREQ_KEY, id] });
+    },
+  });
+}
+
+export function useSubmitPaymentRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.submitPaymentRequest(id),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: [PREQ_KEY] });
+      qc.invalidateQueries({ queryKey: [PREQ_KEY, id] });
+      qc.invalidateQueries({ queryKey: ['workflow-pending'] });
+    },
+  });
+}
+
+export function useApprovePaymentRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, comment }: { id: string; comment?: string }) =>
+      api.approvePaymentRequest(id, comment),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: [PREQ_KEY] });
+      qc.invalidateQueries({ queryKey: [PREQ_KEY, id] });
+      qc.invalidateQueries({ queryKey: ['workflow-pending'] });
+    },
+  });
+}
+
 // ── Payment Vouchers ─────────────────────────────────────────────────────────
 
 export function usePaymentVouchers(query = {}) {
@@ -69,7 +129,10 @@ export function useCreatePaymentVoucher() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (dto: Record<string, unknown>) => api.createPaymentVoucher(dto),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [PV_KEY] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [PV_KEY] });
+      qc.invalidateQueries({ queryKey: [PREQ_KEY] });
+    },
   });
 }
 
@@ -89,6 +152,25 @@ export function useApprovePaymentVoucher() {
       qc.invalidateQueries({ queryKey: [PV_KEY] });
       qc.invalidateQueries({ queryKey: [PV_KEY, id] });
       qc.invalidateQueries({ queryKey: ['workflow-pending'] });
+    },
+  });
+}
+
+export function useMarkPaymentVoucherPaid() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      paymentDetails,
+    }: {
+      id: string;
+      paymentDetails: Record<string, unknown>;
+    }) => api.markPaymentVoucherPaid(id, paymentDetails),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: [PV_KEY] });
+      qc.invalidateQueries({ queryKey: [PV_KEY, id] });
+      qc.invalidateQueries({ queryKey: [PREQ_KEY] });
+      qc.invalidateQueries({ queryKey: ['vendor-invoices'] });
     },
   });
 }

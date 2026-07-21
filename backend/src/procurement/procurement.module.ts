@@ -13,6 +13,8 @@ import { ContractsController } from './contracts/contracts.controller';
 import { ContractsService } from './contracts/contracts.service';
 import { PafController } from './paf/paf.controller';
 import { PafService } from './paf/paf.service';
+import { VendorInvoicesController } from './vendor-invoices/vendor-invoices.controller';
+import { VendorInvoicesService } from './vendor-invoices/vendor-invoices.service';
 import { GrantsModule } from '../grants/grants.module';
 import { UploadsModule } from '../uploads/uploads.module';
 
@@ -26,6 +28,7 @@ import { UploadsModule } from '../uploads/uploads.module';
     GoodsReceiptController,
     ContractsController,
     PafController,
+    VendorInvoicesController,
   ],
   providers: [
     RequisitionsService,
@@ -35,7 +38,8 @@ import { UploadsModule } from '../uploads/uploads.module';
     GoodsReceiptService,
     ContractsService,
     PafService,
+    VendorInvoicesService,
   ],
-  exports: [PurchaseOrdersService, GoodsReceiptService],
+  exports: [PurchaseOrdersService, GoodsReceiptService, VendorInvoicesService],
 })
 export class ProcurementModule {}

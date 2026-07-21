@@ -15,6 +15,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PaymentsController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
+const platform_express_1 = require("@nestjs/platform-express");
+const multer_1 = require("multer");
 const payments_service_1 = require("./payments.service");
 const jwt_auth_guard_1 = require("../../common/guards/jwt-auth.guard");
 const rbac_guard_1 = require("../../common/guards/rbac.guard");
@@ -24,17 +26,180 @@ let PaymentsController = class PaymentsController {
     constructor(svc) {
         this.svc = svc;
     }
-    findVouchers(q) { return this.svc.findAllVouchers(q); }
-    createVoucher(dto, user) { return this.svc.createVoucher(dto, user); }
-    findOneVoucher(id) { return this.svc.findOneVoucher(id); }
-    submitVoucher(id, user) { return this.svc.submitVoucher(id, user); }
-    approveVoucher(id, body, user) { return this.svc.approveVoucher(id, body.comment, user); }
-    markPaid(id, dto, user) { return this.svc.markPaid(id, dto, user); }
-    findCheques(q) { return this.svc.findAllCheques(q); }
-    updateCheque(id, body, user) { return this.svc.updateChequeStatus(id, body.status, user); }
-    findTransfers(q) { return this.svc.findAllTransfers(q); }
+    findPaymentRequests(q) {
+        return this.svc.findAllPaymentRequests(q);
+    }
+    createPaymentRequest(dto, user) {
+        return this.svc.createPaymentRequest(dto, user);
+    }
+    findOnePaymentRequest(id, user) {
+        return this.svc.findOnePaymentRequest(id, user);
+    }
+    updatePaymentRequest(id, dto, user) {
+        return this.svc.updatePaymentRequest(id, dto, user);
+    }
+    getCashReceipt(id) {
+        return this.svc.getCashReceipt(id);
+    }
+    uploadPaymentRequestDocuments(id, files, labelsJson, user) {
+        if (!files || files.length === 0) {
+            throw new common_1.BadRequestException('No files provided');
+        }
+        let labels = [];
+        try {
+            labels = labelsJson ? JSON.parse(labelsJson) : [];
+        }
+        catch {
+            labels = [];
+        }
+        return this.svc.uploadPaymentRequestDocuments(id, files, labels, user);
+    }
+    listPaymentRequestDocuments(id) {
+        return this.svc.listPaymentRequestDocuments(id);
+    }
+    deletePaymentRequestDocument(id, attachmentId, user) {
+        return this.svc.deletePaymentRequestDocument(id, attachmentId, user);
+    }
+    submitPaymentRequest(id, user) {
+        return this.svc.submitPaymentRequest(id, user);
+    }
+    approvePaymentRequest(id, body, user) {
+        return this.svc.approvePaymentRequest(id, body.comment, user);
+    }
+    findVouchers(q) {
+        return this.svc.findAllVouchers(q);
+    }
+    createVoucher(dto, user) {
+        return this.svc.createVoucher(dto, user);
+    }
+    findOneVoucher(id, user) {
+        return this.svc.findOneVoucher(id, user);
+    }
+    submitVoucher(id, user) {
+        return this.svc.submitVoucher(id, user);
+    }
+    approveVoucher(id, body, user) {
+        return this.svc.approveVoucher(id, body.comment, user);
+    }
+    markPaid(id, dto, user) {
+        return this.svc.markPaid(id, dto, user);
+    }
+    findCheques(q) {
+        return this.svc.findAllCheques(q);
+    }
+    updateCheque(id, body, user) {
+        return this.svc.updateChequeStatus(id, body.status, user);
+    }
+    findTransfers(q) {
+        return this.svc.findAllTransfers(q);
+    }
 };
 exports.PaymentsController = PaymentsController;
+__decorate([
+    (0, common_1.Get)('payment-requests'),
+    (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:READ'),
+    (0, swagger_1.ApiOperation)({ summary: 'List payment requests' }),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "findPaymentRequests", null);
+__decorate([
+    (0, common_1.Post)('payment-requests'),
+    (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:CREATE'),
+    (0, swagger_1.ApiOperation)({ summary: 'Create payment request from approved invoice' }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "createPaymentRequest", null);
+__decorate([
+    (0, common_1.Get)('payment-requests/:id'),
+    (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:READ'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "findOnePaymentRequest", null);
+__decorate([
+    (0, common_1.Patch)('payment-requests/:id'),
+    (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:UPDATE'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update DRAFT/RETURNED payment request' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "updatePaymentRequest", null);
+__decorate([
+    (0, common_1.Get)('payment-requests/:id/cash-receipt'),
+    (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:READ'),
+    (0, swagger_1.ApiOperation)({ summary: 'Cash receipt data for print/download' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "getCashReceipt", null);
+__decorate([
+    (0, common_1.Post)('payment-requests/:id/documents'),
+    (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:UPDATE'),
+    (0, swagger_1.ApiOperation)({ summary: 'Upload documents to a payment request' }),
+    (0, swagger_1.ApiConsumes)('multipart/form-data'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('files', 10, {
+        storage: (0, multer_1.memoryStorage)(),
+        limits: { fileSize: 20 * 1024 * 1024 },
+    })),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.UploadedFiles)()),
+    __param(2, (0, common_1.Body)('labels')),
+    __param(3, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Array, String, Object]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "uploadPaymentRequestDocuments", null);
+__decorate([
+    (0, common_1.Get)('payment-requests/:id/documents'),
+    (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:READ'),
+    (0, swagger_1.ApiOperation)({ summary: 'List payment request documents' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "listPaymentRequestDocuments", null);
+__decorate([
+    (0, common_1.Delete)('payment-requests/:id/documents/:attachmentId'),
+    (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:UPDATE'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Remove a payment request document' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Param)('attachmentId')),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "deletePaymentRequestDocument", null);
+__decorate([
+    (0, common_1.Post)('payment-requests/:id/submit'),
+    (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:SUBMIT'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "submitPaymentRequest", null);
+__decorate([
+    (0, common_1.Post)('payment-requests/:id/approve'),
+    (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:APPROVE'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "approvePaymentRequest", null);
 __decorate([
     (0, common_1.Get)('payment-vouchers'),
     (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:READ'),
@@ -56,8 +221,9 @@ __decorate([
     (0, common_1.Get)('payment-vouchers/:id'),
     (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:READ'),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], PaymentsController.prototype, "findOneVoucher", null);
 __decorate([

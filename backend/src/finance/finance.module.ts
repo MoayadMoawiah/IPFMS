@@ -5,8 +5,10 @@ import { JournalEntriesController } from './journal-entries/journal-entries.cont
 import { JournalEntriesService } from './journal-entries/journal-entries.service';
 import { PaymentsController } from './payments/payments.controller';
 import { PaymentsService } from './payments/payments.service';
+import { UploadsModule } from '../uploads/uploads.module';
 
 @Module({
+  imports: [UploadsModule],
   controllers: [ChartOfAccountsController, JournalEntriesController, PaymentsController],
   providers: [ChartOfAccountsService, JournalEntriesService, PaymentsService],
   exports: [JournalEntriesService, PaymentsService],

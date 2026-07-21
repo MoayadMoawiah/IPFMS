@@ -169,7 +169,9 @@ export default function PendingApprovalsPage() {
                 <CheckCircle2 className="mr-1 h-4 w-4" />
                 Approve
               </Button>
-              {task.allowReject && task.documentType === "PURCHASE_REQUISITION" && (
+              {task.allowReject &&
+                (task.documentType === "PURCHASE_REQUISITION" ||
+                  task.documentType === "GOODS_RECEIPT") && (
                 <Button
                   size="sm"
                   variant="destructive"
@@ -180,7 +182,9 @@ export default function PendingApprovalsPage() {
                   Reject
                 </Button>
               )}
-              {task.allowReturn && task.documentType === "PURCHASE_REQUISITION" && (
+              {task.allowReturn &&
+                (task.documentType === "PURCHASE_REQUISITION" ||
+                  task.documentType === "GOODS_RECEIPT") && (
                 <Button
                   size="sm"
                   variant="outline"

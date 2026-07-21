@@ -13,9 +13,9 @@ export declare class PafService {
         data: ({
             rfq: {
                 id: string;
-                title: string;
                 status: import(".prisma/client").$Enums.RfqStatus;
                 serialNumber: string;
+                title: string;
             };
             rfqVendor: ({
                 vendor: {
@@ -45,8 +45,8 @@ export declare class PafService {
             }) | null;
             pr: {
                 id: string;
-                title: string;
                 serialNumber: string;
+                title: string;
             };
         } & {
             currency: string;
@@ -74,9 +74,9 @@ export declare class PafService {
     findOne(id: string): Promise<{
         rfq: {
             id: string;
-            title: string;
             status: import(".prisma/client").$Enums.RfqStatus;
             serialNumber: string;
+            title: string;
             prId: string;
         };
         rfqVendor: ({
@@ -108,8 +108,8 @@ export declare class PafService {
         }) | null;
         pr: {
             id: string;
-            title: string;
             serialNumber: string;
+            title: string;
         };
     } & {
         currency: string;
@@ -138,8 +138,8 @@ export declare class PafService {
     }, user: UserPayload): Promise<{
         rfq: {
             id: string;
-            title: string;
             serialNumber: string;
+            title: string;
         };
         rfqVendor: ({
             vendor: {

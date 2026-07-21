@@ -16,20 +16,20 @@ export declare class RfqController {
             };
             pr: {
                 id: string;
-                title: string;
                 serialNumber: string;
+                title: string;
             };
         } & {
             id: string;
             description: string | null;
             createdAt: Date;
             updatedAt: Date;
-            title: string;
             deletedAt: Date | null;
             createdById: string | null;
             status: import(".prisma/client").$Enums.RfqStatus;
             serialNumber: string;
             grantId: string;
+            title: string;
             procurementMethodId: string | null;
             prId: string;
             issuedDate: Date | null;
@@ -48,12 +48,12 @@ export declare class RfqController {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string;
         deletedAt: Date | null;
         createdById: string | null;
         status: import(".prisma/client").$Enums.RfqStatus;
         serialNumber: string;
         grantId: string;
+        title: string;
         procurementMethodId: string | null;
         prId: string;
         issuedDate: Date | null;
@@ -78,15 +78,15 @@ export declare class RfqController {
             donorId: string;
             fiscalYearId: string | null;
             totalBudget: import(".prisma/client/runtime/library").Decimal;
-            signedDate: Date | null;
-            objectives: string | null;
-            reportingRequirements: string | null;
-            targetBeneficiaries: number | null;
-            grantManagerId: string | null;
-            projectCoordinatorId: string | null;
             committedAmount: import(".prisma/client/runtime/library").Decimal;
             spentAmount: import(".prisma/client/runtime/library").Decimal;
+            signedDate: Date | null;
+            objectives: string | null;
             coverageArea: string | null;
+            targetBeneficiaries: number | null;
+            reportingRequirements: string | null;
+            grantManagerId: string | null;
+            projectCoordinatorId: string | null;
         };
         pr: {
             items: {
@@ -108,7 +108,6 @@ export declare class RfqController {
             description: string | null;
             createdAt: Date;
             updatedAt: Date;
-            title: string;
             departmentId: string | null;
             deletedAt: Date | null;
             status: import(".prisma/client").$Enums.DocumentStatus;
@@ -117,6 +116,7 @@ export declare class RfqController {
             grantId: string;
             activityId: string | null;
             budgetLineId: string | null;
+            title: string;
             requestedById: string;
             procurementMethodId: string | null;
             totalEstimatedAmount: import(".prisma/client/runtime/library").Decimal;
@@ -170,12 +170,12 @@ export declare class RfqController {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string;
         deletedAt: Date | null;
         createdById: string | null;
         status: import(".prisma/client").$Enums.RfqStatus;
         serialNumber: string;
         grantId: string;
+        title: string;
         procurementMethodId: string | null;
         prId: string;
         issuedDate: Date | null;
@@ -187,12 +187,12 @@ export declare class RfqController {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string;
         deletedAt: Date | null;
         createdById: string | null;
         status: import(".prisma/client").$Enums.RfqStatus;
         serialNumber: string;
         grantId: string;
+        title: string;
         procurementMethodId: string | null;
         prId: string;
         issuedDate: Date | null;

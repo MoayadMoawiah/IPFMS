@@ -46,9 +46,9 @@ export declare class ReportsController {
                 updatedAt: Date;
                 isActive: boolean;
                 notes: string | null;
+                accountNumber: string;
                 bankName: string;
                 accountName: string;
-                accountNumber: string;
                 iban: string | null;
                 swiftCode: string | null;
                 currentBalance: import(".prisma/client/runtime/library").Decimal;

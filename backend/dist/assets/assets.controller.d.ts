@@ -121,15 +121,15 @@ export declare class AssetsController {
             donorId: string;
             fiscalYearId: string | null;
             totalBudget: import(".prisma/client/runtime/library").Decimal;
-            signedDate: Date | null;
-            objectives: string | null;
-            reportingRequirements: string | null;
-            targetBeneficiaries: number | null;
-            grantManagerId: string | null;
-            projectCoordinatorId: string | null;
             committedAmount: import(".prisma/client/runtime/library").Decimal;
             spentAmount: import(".prisma/client/runtime/library").Decimal;
+            signedDate: Date | null;
+            objectives: string | null;
             coverageArea: string | null;
+            targetBeneficiaries: number | null;
+            reportingRequirements: string | null;
+            grantManagerId: string | null;
+            projectCoordinatorId: string | null;
         } | null;
         category: {
             id: string;

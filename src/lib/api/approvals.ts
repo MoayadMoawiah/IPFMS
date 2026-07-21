@@ -27,10 +27,16 @@ export async function processDocumentApproval({
       }
       return procurementApi.approvePurchaseOrder(documentId, comment);
     case 'GOODS_RECEIPT':
-      if (action !== 'APPROVE') {
-        throw new Error('Goods receipts only support approval at this time');
+      if (action === 'APPROVE') {
+        return procurementApi.approveGoodsReceipt(documentId, comment);
       }
-      return procurementApi.approveGoodsReceipt(documentId, comment);
+      if (action === 'REJECT') {
+        return procurementApi.rejectGoodsReceipt(documentId, comment ?? '');
+      }
+      if (action === 'RETURN') {
+        return procurementApi.returnGoodsReceipt(documentId, comment ?? '');
+      }
+      throw new Error(`Unsupported goods receipt action: ${action}`);
     case 'PAYMENT_VOUCHER':
       if (action !== 'APPROVE') {
         throw new Error('Payment vouchers only support approval at this time');

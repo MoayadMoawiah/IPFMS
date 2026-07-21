@@ -22,6 +22,8 @@ const contracts_controller_1 = require("./contracts/contracts.controller");
 const contracts_service_1 = require("./contracts/contracts.service");
 const paf_controller_1 = require("./paf/paf.controller");
 const paf_service_1 = require("./paf/paf.service");
+const vendor_invoices_controller_1 = require("./vendor-invoices/vendor-invoices.controller");
+const vendor_invoices_service_1 = require("./vendor-invoices/vendor-invoices.service");
 const grants_module_1 = require("../grants/grants.module");
 const uploads_module_1 = require("../uploads/uploads.module");
 let ProcurementModule = class ProcurementModule {
@@ -38,6 +40,7 @@ exports.ProcurementModule = ProcurementModule = __decorate([
             goods_receipt_controller_1.GoodsReceiptController,
             contracts_controller_1.ContractsController,
             paf_controller_1.PafController,
+            vendor_invoices_controller_1.VendorInvoicesController,
         ],
         providers: [
             requisitions_service_1.RequisitionsService,
@@ -47,8 +50,9 @@ exports.ProcurementModule = ProcurementModule = __decorate([
             goods_receipt_service_1.GoodsReceiptService,
             contracts_service_1.ContractsService,
             paf_service_1.PafService,
+            vendor_invoices_service_1.VendorInvoicesService,
         ],
-        exports: [purchase_orders_service_1.PurchaseOrdersService, goods_receipt_service_1.GoodsReceiptService],
+        exports: [purchase_orders_service_1.PurchaseOrdersService, goods_receipt_service_1.GoodsReceiptService, vendor_invoices_service_1.VendorInvoicesService],
     })
 ], ProcurementModule);
 //# sourceMappingURL=procurement.module.js.map

@@ -24,7 +24,6 @@ export declare class ContractsService {
             description: string | null;
             createdAt: Date;
             updatedAt: Date;
-            title: string;
             deletedAt: Date | null;
             startDate: Date;
             endDate: Date;
@@ -32,6 +31,7 @@ export declare class ContractsService {
             status: import(".prisma/client").$Enums.ContractStatus;
             serialNumber: string;
             grantId: string;
+            title: string;
             workflowInstanceId: string | null;
             vendorId: string;
             deliverables: string | null;
@@ -64,15 +64,15 @@ export declare class ContractsService {
             donorId: string;
             fiscalYearId: string | null;
             totalBudget: Prisma.Decimal;
-            signedDate: Date | null;
-            objectives: string | null;
-            reportingRequirements: string | null;
-            targetBeneficiaries: number | null;
-            grantManagerId: string | null;
-            projectCoordinatorId: string | null;
             committedAmount: Prisma.Decimal;
             spentAmount: Prisma.Decimal;
+            signedDate: Date | null;
+            objectives: string | null;
             coverageArea: string | null;
+            targetBeneficiaries: number | null;
+            reportingRequirements: string | null;
+            grantManagerId: string | null;
+            projectCoordinatorId: string | null;
         };
         vendor: {
             id: string;
@@ -108,7 +108,6 @@ export declare class ContractsService {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string;
         deletedAt: Date | null;
         startDate: Date;
         endDate: Date;
@@ -116,6 +115,7 @@ export declare class ContractsService {
         status: import(".prisma/client").$Enums.ContractStatus;
         serialNumber: string;
         grantId: string;
+        title: string;
         workflowInstanceId: string | null;
         vendorId: string;
         deliverables: string | null;
@@ -129,7 +129,6 @@ export declare class ContractsService {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string;
         deletedAt: Date | null;
         startDate: Date;
         endDate: Date;
@@ -137,6 +136,7 @@ export declare class ContractsService {
         status: import(".prisma/client").$Enums.ContractStatus;
         serialNumber: string;
         grantId: string;
+        title: string;
         workflowInstanceId: string | null;
         vendorId: string;
         deliverables: string | null;
@@ -150,7 +150,6 @@ export declare class ContractsService {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string;
         deletedAt: Date | null;
         startDate: Date;
         endDate: Date;
@@ -158,6 +157,7 @@ export declare class ContractsService {
         status: import(".prisma/client").$Enums.ContractStatus;
         serialNumber: string;
         grantId: string;
+        title: string;
         workflowInstanceId: string | null;
         vendorId: string;
         deliverables: string | null;
@@ -171,7 +171,6 @@ export declare class ContractsService {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string;
         deletedAt: Date | null;
         startDate: Date;
         endDate: Date;
@@ -179,6 +178,7 @@ export declare class ContractsService {
         status: import(".prisma/client").$Enums.ContractStatus;
         serialNumber: string;
         grantId: string;
+        title: string;
         workflowInstanceId: string | null;
         vendorId: string;
         deliverables: string | null;
@@ -198,7 +198,6 @@ export declare class ContractsService {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string;
         deletedAt: Date | null;
         startDate: Date;
         endDate: Date;
@@ -206,6 +205,7 @@ export declare class ContractsService {
         status: import(".prisma/client").$Enums.ContractStatus;
         serialNumber: string;
         grantId: string;
+        title: string;
         workflowInstanceId: string | null;
         vendorId: string;
         deliverables: string | null;
@@ -219,7 +219,6 @@ export declare class ContractsService {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        title: string;
         deletedAt: Date | null;
         startDate: Date;
         endDate: Date;
@@ -227,6 +226,7 @@ export declare class ContractsService {
         status: import(".prisma/client").$Enums.ContractStatus;
         serialNumber: string;
         grantId: string;
+        title: string;
         workflowInstanceId: string | null;
         vendorId: string;
         deliverables: string | null;

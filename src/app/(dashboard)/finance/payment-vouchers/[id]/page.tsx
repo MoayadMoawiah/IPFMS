@@ -2,19 +2,37 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, CheckCircle, Printer, Send } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  Banknote,
+  CheckCircle,
+  Printer,
+  Send,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { LoadingSkeleton } from "@/components/shared/loading-skeleton";
 import { PermissionGate } from "@/components/auth/permission-gate";
+import { WaitingForLabel } from "@/components/workflow/waiting-for-label";
 import { WorkflowStepTimeline } from "@/components/workflow/workflow-step-timeline";
 import { GenericDocPrintView, formatMetaDate } from "@/components/documents/generic-doc-print-view";
 import {
   usePaymentVoucher,
   useSubmitPaymentVoucher,
   useApprovePaymentVoucher,
+  useMarkPaymentVoucherPaid,
 } from "@/hooks/use-finance";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { extractApiError } from "@/lib/api-errors";
@@ -24,10 +42,17 @@ export default function PaymentVoucherDetailPage() {
   const params = useParams();
   const pvId = params.id as string;
   const [actionError, setActionError] = useState<string | null>(null);
+  const [showMarkPaid, setShowMarkPaid] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("CHEQUE");
+  const [paymentDate, setPaymentDate] = useState(
+    () => new Date().toISOString().slice(0, 10),
+  );
+  const [reference, setReference] = useState("");
 
-  const { data, isLoading, isError } = usePaymentVoucher(pvId);
+  const { data, isLoading, isError, refetch } = usePaymentVoucher(pvId);
   const submitPv = useSubmitPaymentVoucher();
   const approvePv = useApprovePaymentVoucher();
+  const markPaid = useMarkPaymentVoucherPaid();
 
   if (isLoading) return <LoadingSkeleton variant="cards" />;
 
@@ -55,10 +80,21 @@ export default function PaymentVoucherDetailPage() {
     reference?: string | null;
     createdAt: string;
     grant?: { code: string; name: string } | null;
+    paymentRequest?: {
+      id: string;
+      serialNumber: string;
+      invoice?: { id: string; serialNumber: string } | null;
+    } | null;
     createdBy?: {
       firstName?: string;
       lastName?: string;
       roles?: Array<{ role?: { name?: string } }>;
+    } | null;
+    approvalContext?: {
+      canAct?: boolean;
+      waitingForRoleName?: string | null;
+      waitingForStepName?: string | null;
+      dueAt?: string | null;
     } | null;
     workflow?: {
       currentStepNumber?: number;
@@ -90,7 +126,9 @@ export default function PaymentVoucherDetailPage() {
     payments?: Array<{ id: string; status: string; paymentMethod: string }>;
   };
 
-  const status = pv.status.toLowerCase();
+  const status = pv.status.toUpperCase();
+  const canApproveStep =
+    status === "SUBMITTED" && Boolean(pv.approvalContext?.canAct);
 
   return (
     <>
@@ -105,11 +143,12 @@ export default function PaymentVoucherDetailPage() {
           ]}
           actions={
             <div className="flex flex-wrap gap-2">
-              {(status === "draft" || status === "returned") && (
+              {(status === "DRAFT" || status === "RETURNED") && (
                 <PermissionGate permission="PAYMENTS:SUBMIT">
                   <Button
                     onClick={() =>
                       submitPv.mutate(pvId, {
+                        onSuccess: () => refetch(),
                         onError: (err) =>
                           setActionError(extractApiError(err, "Failed to submit voucher")),
                       })
@@ -121,22 +160,36 @@ export default function PaymentVoucherDetailPage() {
                   </Button>
                 </PermissionGate>
               )}
-              {status === "submitted" && (
+              {canApproveStep && (
                 <PermissionGate permission="PAYMENTS:APPROVE">
                   <Button
                     onClick={() =>
                       approvePv.mutate(
                         { id: pvId },
                         {
+                          onSuccess: () => refetch(),
                           onError: (err) =>
-                            setActionError(extractApiError(err, "Failed to approve voucher")),
+                            setActionError(
+                              extractApiError(err, "Failed to approve voucher"),
+                            ),
                         },
                       )
                     }
                     disabled={approvePv.isPending}
                   >
                     <CheckCircle className="h-4 w-4" />
-                    {approvePv.isPending ? "Approving…" : "Approve"}
+                    {approvePv.isPending ? "Approving…" : "Approve step"}
+                  </Button>
+                </PermissionGate>
+              )}
+              {status === "APPROVED" && (
+                <PermissionGate permission="PAYMENTS:PAY">
+                  <Button
+                    variant={showMarkPaid ? "secondary" : "default"}
+                    onClick={() => setShowMarkPaid((v) => !v)}
+                  >
+                    <Banknote className="h-4 w-4" />
+                    Mark paid
                   </Button>
                 </PermissionGate>
               )}
@@ -161,11 +214,90 @@ export default function PaymentVoucherDetailPage() {
         )}
 
         <div className="mb-6 flex items-center gap-3">
-          <StatusBadge status={status} />
+          <StatusBadge status={pv.status.toLowerCase()} />
           <span className="text-2xl font-bold">
             {formatCurrency(Number(pv.amount), pv.currency)}
           </span>
         </div>
+
+        {status === "SUBMITTED" && (
+          <WaitingForLabel
+            status={status}
+            approvalContext={pv.approvalContext}
+          />
+        )}
+
+        {showMarkPaid && status === "APPROVED" && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Record payment</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label>Payment method</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CHEQUE">Cheque</SelectItem>
+                    <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+                    <SelectItem value="CASH">Cash</SelectItem>
+                    <SelectItem value="PETTY_CASH">Petty Cash</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="payDate">Payment date</Label>
+                <Input
+                  id="payDate"
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="payRef">Reference</Label>
+                <Input
+                  id="payRef"
+                  value={reference}
+                  onChange={(e) => setReference(e.target.value)}
+                  placeholder="Optional"
+                />
+              </div>
+              <div className="sm:col-span-3">
+                <Button
+                  onClick={() => {
+                    setActionError(null);
+                    markPaid.mutate(
+                      {
+                        id: pvId,
+                        paymentDetails: {
+                          paymentMethod,
+                          paymentDate,
+                          reference: reference || undefined,
+                        },
+                      },
+                      {
+                        onSuccess: () => {
+                          setShowMarkPaid(false);
+                          refetch();
+                        },
+                        onError: (err) =>
+                          setActionError(
+                            extractApiError(err, "Failed to mark voucher as paid"),
+                          ),
+                      },
+                    );
+                  }}
+                  disabled={markPaid.isPending || !paymentDate}
+                >
+                  {markPaid.isPending ? "Recording…" : "Confirm paid"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-3">
           <Card className="lg:col-span-2">
@@ -187,6 +319,17 @@ export default function PaymentVoucherDetailPage() {
                 <span className="text-muted-foreground">Grant:</span>{" "}
                 {pv.grant ? `${pv.grant.code} — ${pv.grant.name}` : "—"}
               </p>
+              {pv.paymentRequest && (
+                <p>
+                  <span className="text-muted-foreground">Payment request:</span>{" "}
+                  <Link
+                    href={`/finance/payment-requests/${pv.paymentRequest.id}`}
+                    className="text-primary hover:underline"
+                  >
+                    {pv.paymentRequest.serialNumber}
+                  </Link>
+                </p>
+              )}
               {pv.reference && (
                 <p>
                   <span className="text-muted-foreground">Reference:</span> {pv.reference}

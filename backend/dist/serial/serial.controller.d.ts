@@ -21,21 +21,21 @@ export declare class SerialController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        format: string;
         grantCode: string;
         docType: import(".prisma/client").$Enums.ProcurementDocType;
         lastNumber: number;
         prefix: string | null;
+        format: string;
     }[]>;
     getGrantSequences(grantCode: string): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        format: string;
         grantCode: string;
         docType: import(".prisma/client").$Enums.ProcurementDocType;
         lastNumber: number;
         prefix: string | null;
+        format: string;
     }[]>;
 }
 export {};

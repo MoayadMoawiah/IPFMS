@@ -51,9 +51,9 @@ export declare class VendorsService {
             updatedAt: Date;
             documentType: import(".prisma/client").$Enums.VendorDocumentType;
             vendorId: string;
+            fileUrl: string | null;
             fileName: string | null;
             fileSize: number | null;
-            fileUrl: string | null;
             documentNumber: string | null;
             issueDate: Date | null;
             expiryDate: Date | null;
@@ -68,12 +68,12 @@ export declare class VendorsService {
             updatedAt: Date;
             vendorId: string;
             country: string | null;
+            isPrimary: boolean;
+            accountNumber: string;
             bankName: string;
             accountName: string;
-            accountNumber: string;
             iban: string | null;
             swiftCode: string | null;
-            isPrimary: boolean;
         }[];
     } & {
         id: string;
@@ -192,9 +192,9 @@ export declare class VendorsService {
         updatedAt: Date;
         documentType: import(".prisma/client").$Enums.VendorDocumentType;
         vendorId: string;
+        fileUrl: string | null;
         fileName: string | null;
         fileSize: number | null;
-        fileUrl: string | null;
         documentNumber: string | null;
         issueDate: Date | null;
         expiryDate: Date | null;
@@ -208,9 +208,9 @@ export declare class VendorsService {
         updatedAt: Date;
         documentType: import(".prisma/client").$Enums.VendorDocumentType;
         vendorId: string;
+        fileUrl: string | null;
         fileName: string | null;
         fileSize: number | null;
-        fileUrl: string | null;
         documentNumber: string | null;
         issueDate: Date | null;
         expiryDate: Date | null;
@@ -230,9 +230,9 @@ export declare class VendorsService {
         updatedAt: Date;
         documentType: import(".prisma/client").$Enums.VendorDocumentType;
         vendorId: string;
+        fileUrl: string | null;
         fileName: string | null;
         fileSize: number | null;
-        fileUrl: string | null;
         documentNumber: string | null;
         issueDate: Date | null;
         expiryDate: Date | null;

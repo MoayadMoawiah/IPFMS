@@ -368,6 +368,34 @@ let WorkflowService = WorkflowService_1 = class WorkflowService {
                     href: `/finance/payment-vouchers/${doc.id}`,
                 };
             }
+            case 'PAYMENT_REQUEST': {
+                const doc = await this.prisma.paymentRequest.findUnique({
+                    where: { id: documentId },
+                    select: { id: true, serialNumber: true, status: true },
+                });
+                if (!doc)
+                    return null;
+                return {
+                    ...doc,
+                    title: doc.serialNumber,
+                    label: 'Payment Request',
+                    href: `/finance/payment-requests/${doc.id}`,
+                };
+            }
+            case 'VENDOR_INVOICE': {
+                const doc = await this.prisma.vendorInvoice.findUnique({
+                    where: { id: documentId },
+                    select: { id: true, serialNumber: true, invoiceNumber: true, status: true },
+                });
+                if (!doc)
+                    return null;
+                return {
+                    ...doc,
+                    title: doc.invoiceNumber || doc.serialNumber,
+                    label: 'Vendor Invoice',
+                    href: `/procurement/vendor-invoices/${doc.id}`,
+                };
+            }
             default:
                 return null;
         }

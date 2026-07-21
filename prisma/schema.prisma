@@ -26,6 +26,7 @@ enum DocumentStatus {
   SUBMITTED
   RETURNED
   APPROVED
+  ISSUED
   REJECTED
   CANCELLED
   CLOSED
@@ -287,6 +288,7 @@ enum ProcurementDocType {
   CNT
   INV
   PAF
+  PREQ
 }
 
 enum VendorType {
@@ -1402,6 +1404,7 @@ model GoodsReceipt {
   workflow    WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id])
   receivedBy  User             @relation(fields: [receivedById], references: [id])
   items       GrnItem[]
+  invoices    VendorInvoice[]
 
   @@index([poId, status])
   @@index([grantId])
@@ -1465,6 +1468,7 @@ model VendorInvoice {
   id                 String        @id @default(cuid())
   serialNumber       String        @unique
   poId               String
+  grnId              String?
   vendorId           String
   grantId            String
   invoiceNumber      String
@@ -1487,13 +1491,15 @@ model VendorInvoice {
   updatedAt          DateTime      @updatedAt
   deletedAt          DateTime?
 
-  po             PurchaseOrder    @relation(fields: [poId], references: [id])
-  vendor         Vendor           @relation(fields: [vendorId], references: [id])
-  grant          Grant            @relation(fields: [grantId], references: [id])
-  workflow       WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id])
+  po              PurchaseOrder     @relation(fields: [poId], references: [id])
+  grn             GoodsReceipt?     @relation(fields: [grnId], references: [id])
+  vendor          Vendor            @relation(fields: [vendorId], references: [id])
+  grant           Grant             @relation(fields: [grantId], references: [id])
+  workflow        WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id])
   paymentRequests PaymentRequest[]
 
   @@index([poId, status])
+  @@index([grnId])
   @@index([vendorId])
   @@index([grantId])
   @@map("vendor_invoices")
@@ -1691,6 +1697,7 @@ model PaymentRequest {
   totalAmount        Decimal        @db.Decimal(20, 4)
   currency           String         @default("USD")
   paymentMethod      PaymentMethod  @default(CHEQUE)
+  methodDetails      Json?
   bankAccountId      String?
   notes              String?
   status             DocumentStatus @default(DRAFT)

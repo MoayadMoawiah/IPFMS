@@ -55,9 +55,9 @@ export declare class WorkflowController {
             label: string;
             href: string;
             id: string;
-            title: string;
             status: import(".prisma/client").$Enums.DocumentStatus;
             serialNumber: string;
+            title: string;
         } | {
             title: string;
             label: string;
@@ -66,6 +66,14 @@ export declare class WorkflowController {
             status: import(".prisma/client").$Enums.DocumentStatus;
             serialNumber: string;
             payeeName: string;
+        } | {
+            title: string;
+            label: string;
+            href: string;
+            id: string;
+            status: import(".prisma/client").$Enums.InvoiceStatus;
+            serialNumber: string;
+            invoiceNumber: string;
         } | null;
     }[]>;
     getInstance(id: string): Promise<({
