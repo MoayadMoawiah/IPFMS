@@ -245,8 +245,7 @@ export async function seedLookupData() {
       documentType: 'PAYMENT_VOUCHER',
       steps: [
         { stepNumber: 1, name: 'Finance Manager Review', approverRoleId: 'role-finance-manager', slaHours: 24, escalationHours: 48, allowReturn: true, allowReject: true },
-        { stepNumber: 2, name: 'Internal Auditor Compliance Check', approverRoleId: 'role-auditor', slaHours: 24, escalationHours: 48, allowReturn: true, allowReject: true },
-        { stepNumber: 3, name: 'Country Director Authorize Payment', approverRoleId: 'role-country-director', slaHours: 48, escalationHours: 72, allowReturn: true, allowReject: true },
+        { stepNumber: 2, name: 'Country Director Authorize Payment', approverRoleId: 'role-country-director', slaHours: 48, escalationHours: 72, allowReturn: true, allowReject: true },
       ],
     },
     {
@@ -369,6 +368,15 @@ export async function seedLookupData() {
         },
       });
     }
+
+    // Drop template steps that are no longer defined (e.g. removed auditor step).
+    const keepStepNumbers = steps.map((s) => s.stepNumber);
+    await prisma.workflowStep.deleteMany({
+      where: {
+        templateId: template.id,
+        stepNumber: { notIn: keepStepNumbers },
+      },
+    });
   }
   console.log(`  ✓ ${workflowTemplates.length} workflow templates`);
 

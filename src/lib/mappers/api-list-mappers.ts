@@ -1,5 +1,41 @@
 /** Map API list records to UI-friendly shapes used by DataTable columns. */
 
+export function mapChequeRow(cheque: Record<string, unknown>) {
+  const bank = cheque.bankAccount as
+    | { accountName?: string; bankName?: string; accountNumber?: string }
+    | undefined;
+  const payment = cheque.payment as
+    | {
+        paymentDate?: string;
+        paymentVoucher?: { id?: string; serialNumber?: string } | null;
+      }
+    | undefined;
+  const bankLabel = bank
+    ? [bank.bankName, bank.accountName].filter(Boolean).join(" — ") ||
+      bank.accountNumber ||
+      "—"
+    : "—";
+
+  return {
+    id: cheque.id as string,
+    serialNumber: (cheque.serialNumber as string) ?? "—",
+    number: (cheque.chequeNumber as string) ?? "—",
+    payee: (cheque.payeeName as string) ?? "—",
+    amount: Number(cheque.amount) || 0,
+    currency: (cheque.currency as string) ?? "USD",
+    issueDate:
+      (cheque.issuedAt as string) ||
+      (cheque.chequeDate as string) ||
+      payment?.paymentDate ||
+      (cheque.createdAt as string),
+    chequeDate: cheque.chequeDate as string | undefined,
+    status: String(cheque.status ?? "").toLowerCase(),
+    bankAccount: bankLabel,
+    paymentVoucherId: payment?.paymentVoucher?.id,
+    paymentVoucherNumber: payment?.paymentVoucher?.serialNumber,
+  };
+}
+
 export function mapPaymentVoucherRow(pv: Record<string, unknown>) {
   const grant = pv.grant as { code?: string } | undefined;
   return {

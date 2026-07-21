@@ -90,6 +90,7 @@ enum PermissionAction {
   DEPRECIATE
   DISPOSE
   ACTIVATE
+  OVERRIDE
 }
 
 enum PermissionModule {

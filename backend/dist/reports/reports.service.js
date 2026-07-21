@@ -66,7 +66,7 @@ let ReportsService = class ReportsService {
                 donor: true,
                 budgetLines: { where: { deletedAt: null } },
                 purchaseOrders: { where: { deletedAt: null, status: { in: ['APPROVED', 'CLOSED'] } } },
-                paymentVouchers: { where: { deletedAt: null, status: 'PAID' } },
+                paymentVouchers: { where: { deletedAt: null, status: 'CLOSED' } },
             },
         });
         if (!grant)

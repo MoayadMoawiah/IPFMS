@@ -10,7 +10,6 @@ import {
   CheckCircle,
   Download,
   FilePlus,
-  Paperclip,
   Printer,
   Send,
   Trash2,
@@ -25,15 +24,19 @@ import { PermissionGate } from "@/components/auth/permission-gate";
 import { WaitingForLabel } from "@/components/workflow/waiting-for-label";
 import { WorkflowStepTimeline } from "@/components/workflow/workflow-step-timeline";
 import {
+  SupportingDocumentsReview,
+  useSupportingDocumentsReview,
+} from "@/components/workflow/supporting-documents-review";
+import {
   useApprovePaymentRequest,
   usePaymentRequest,
   useSubmitPaymentRequest,
 } from "@/hooks/use-finance";
 import {
   deletePaymentRequestDocument,
-  getPaymentRequestDocuments,
+  getPaymentRequestSupportingDocuments,
   uploadPaymentRequestDocuments,
-  type DocumentAttachment,
+  type SupportingDocument,
 } from "@/lib/api/uploads";
 import { getPaymentRequestCashReceipt } from "@/lib/api/finance";
 import { extractApiError } from "@/lib/api-errors";
@@ -52,9 +55,9 @@ export default function PaymentRequestDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
 
-  const { data: documents = [], isLoading: loadingDocs } = useQuery({
-    queryKey: ["payment-request-documents", requestId],
-    queryFn: () => getPaymentRequestDocuments(requestId),
+  const { data: supportingDocuments = [], isLoading: loadingDocs } = useQuery({
+    queryKey: ["payment-request-supporting-documents", requestId],
+    queryFn: () => getPaymentRequestSupportingDocuments(requestId),
     enabled: !!requestId,
   });
 
@@ -68,7 +71,9 @@ export default function PaymentRequestDetailPage() {
     mutationFn: ({ files, labels }: { files: File[]; labels: string[] }) =>
       uploadPaymentRequestDocuments(requestId, files, labels),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["payment-request-documents", requestId] });
+      qc.invalidateQueries({
+        queryKey: ["payment-request-supporting-documents", requestId],
+      });
       refetch();
     },
   });
@@ -77,10 +82,31 @@ export default function PaymentRequestDetailPage() {
     mutationFn: (attachmentId: string) =>
       deletePaymentRequestDocument(requestId, attachmentId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["payment-request-documents", requestId] });
+      qc.invalidateQueries({
+        queryKey: ["payment-request-supporting-documents", requestId],
+      });
       refetch();
     },
   });
+
+  const requestPreview = data as
+    | {
+        status?: string;
+        approvalContext?: { canAct?: boolean } | null;
+      }
+    | undefined;
+  const canApproveStepPreview =
+    String(requestPreview?.status ?? "").toUpperCase() === "SUBMITTED" &&
+    Boolean(requestPreview?.approvalContext?.canAct);
+  const {
+    allReviewed,
+    approveDisabledReason,
+    markViewed,
+    viewedAttachmentIds,
+  } = useSupportingDocumentsReview(
+    supportingDocuments,
+    canApproveStepPreview,
+  );
 
   if (isLoading) return <LoadingSkeleton variant="cards" />;
 
@@ -142,25 +168,43 @@ export default function PaymentRequestDetailPage() {
   const isCash = request.paymentMethod === "CASH";
   const hasSignedReceipt =
     Boolean(request.hasSignedCashReceipt) ||
-    documents.some((d) => d.fileName === SIGNED_CASH_RECEIPT_LABEL);
-  const canApproveStep =
-    status === "SUBMITTED" && Boolean(request.approvalContext?.canAct);
-  const hasOpenVoucher = (request.paymentVouchers ?? []).some(
-    (v) => v.status.toUpperCase() !== "PAID",
-  );
+    supportingDocuments.some(
+      (d) =>
+        d.source === "payment_request" &&
+        d.fileName === SIGNED_CASH_RECEIPT_LABEL,
+    );
+  const canApproveStep = canApproveStepPreview;
+  const approveBlockedByReview = canApproveStep && !allReviewed;
+  const existingVoucher = (request.paymentVouchers ?? [])[0];
+  const hasExistingVoucher = Boolean(existingVoucher);
   const details = (request.methodDetails || {}) as Record<string, string | null>;
 
-  const openCashReceiptPrint = async () => {
-    setActionError(null);
-    try {
-      setShowReceipt(true);
-      const receipt = cashReceipt || (await getPaymentRequestCashReceipt(requestId));
-      const w = window.open("", "_blank", "noopener,noreferrer,width=800,height=900");
-      if (!w) {
-        setActionError("Pop-up blocked. Allow pop-ups to download the cash receipt.");
-        return;
-      }
-      w.document.write(`<!DOCTYPE html><html><head><title>Cash Receipt ${receipt.requestSerial}</title>
+  const handleOpenSupportingDoc = (doc: SupportingDocument) => {
+    markViewed(doc.id);
+    window.open(doc.fileUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const buildCashReceiptHtml = (receipt: {
+    title: string;
+    organizationName: string;
+    organizationShortName?: string | null;
+    requestSerial: string;
+    requestDate: string;
+    vendorName?: string | null;
+    paidToName?: string | null;
+    invoiceSerial?: string | null;
+    invoiceNumber?: string | null;
+    grantCode?: string | null;
+    grantName?: string | null;
+    amount: number | string;
+    currency: string;
+    notes?: string | null;
+    signatureLines?: {
+      recipient?: string;
+      cashier?: string;
+      date?: string;
+    };
+  }) => `<!DOCTYPE html><html><head><title>Cash Receipt ${receipt.requestSerial}</title>
         <style>
           body { font-family: Georgia, serif; padding: 40px; color: #111; }
           h1 { font-size: 22px; margin-bottom: 4px; }
@@ -188,9 +232,42 @@ export default function PaymentRequestDetailPage() {
         <div class="box"><div class="label">${receipt.signatureLines?.cashier || "Cashier signature"}</div></div>
         <div class="box"><div class="label">${receipt.signatureLines?.date || "Date"}</div></div>
         <script>window.onload = function(){ window.print(); }</script>
-        </body></html>`);
-      w.document.close();
+        </body></html>`;
+
+  const downloadCashReceiptHtml = (html: string, serial: string) => {
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `cash-receipt-${serial}.html`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const openCashReceiptPrint = async () => {
+    setActionError(null);
+    // Open synchronously in the click stack (before await). Avoid noopener — it makes window.open return null.
+    const w = window.open("about:blank", "_blank", "width=800,height=900");
+    try {
+      setShowReceipt(true);
+      if (w) {
+        w.document.write(
+          "<p style='font-family:sans-serif;padding:24px'>Loading cash receipt…</p>",
+        );
+      }
+      const receipt = cashReceipt || (await getPaymentRequestCashReceipt(requestId));
+      const html = buildCashReceiptHtml(receipt);
+      if (w && !w.closed) {
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+        return;
+      }
+      downloadCashReceiptHtml(html, receipt.requestSerial);
     } catch (err) {
+      if (w && !w.closed) w.close();
       setActionError(extractApiError(err, "Failed to load cash receipt"));
     }
   };
@@ -270,14 +347,15 @@ export default function PaymentRequestDetailPage() {
                       },
                     )
                   }
-                  disabled={approveRequest.isPending}
+                  disabled={approveRequest.isPending || approveBlockedByReview}
+                  title={approveDisabledReason}
                 >
                   <CheckCircle className="h-4 w-4" />
                   {approveRequest.isPending ? "Approving…" : "Approve step"}
                 </Button>
               </PermissionGate>
             )}
-            {status === "APPROVED" && !hasOpenVoucher && (
+            {status === "APPROVED" && !hasExistingVoucher && (
               <PermissionGate permission="PAYMENTS:CREATE">
                 <Button asChild>
                   <Link
@@ -288,6 +366,13 @@ export default function PaymentRequestDetailPage() {
                   </Link>
                 </Button>
               </PermissionGate>
+            )}
+            {existingVoucher && (
+              <Button variant="secondary" asChild>
+                <Link href={`/finance/payment-vouchers/${existingVoucher.id}`}>
+                  Open Payment Voucher
+                </Link>
+              </Button>
             )}
             <Button variant="outline" asChild>
               <Link href="/finance/payment-requests">
@@ -490,13 +575,21 @@ export default function PaymentRequestDetailPage() {
             </Card>
           )}
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="flex items-center gap-2">
-                <Paperclip className="h-4 w-4" />
-                Attachments
-              </CardTitle>
-              {canEditDocs && (
+          {approveBlockedByReview && (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
+              Open all supporting documents before approving.
+            </div>
+          )}
+
+          <SupportingDocumentsReview
+            documents={supportingDocuments}
+            isLoading={loadingDocs}
+            requireReview={canApproveStep}
+            viewedAttachmentIds={viewedAttachmentIds}
+            onOpen={handleOpenSupportingDoc}
+            emptyMessage="No supporting documents in the PR → payment chain."
+            headerActions={
+              canEditDocs ? (
                 <PermissionGate permission="PAYMENTS:UPDATE">
                   <div>
                     <input
@@ -521,61 +614,33 @@ export default function PaymentRequestDetailPage() {
                     </Button>
                   </div>
                 </PermissionGate>
-              )}
-            </CardHeader>
-            <CardContent>
-              {loadingDocs ? (
-                <p className="text-sm text-muted-foreground">Loading documents…</p>
-              ) : documents.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No documents attached.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {documents.map((doc: DocumentAttachment) => (
-                    <li
-                      key={doc.id}
-                      className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
-                    >
-                      <div className="min-w-0">
-                        <a
-                          href={doc.fileUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="truncate font-medium text-primary hover:underline"
-                        >
-                          {doc.originalName}
-                        </a>
-                        <p className="text-xs text-muted-foreground">
-                          {doc.fileName === SIGNED_CASH_RECEIPT_LABEL
-                            ? "Signed cash receipt"
-                            : doc.fileName}
-                        </p>
-                      </div>
-                      {canEditDocs && (
-                        <PermissionGate permission="PAYMENTS:UPDATE">
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            disabled={deleteDoc.isPending}
-                            onClick={() =>
-                              deleteDoc.mutate(doc.id, {
-                                onError: (err) =>
-                                  setActionError(
-                                    extractApiError(err, "Failed to delete document"),
-                                  ),
-                              })
-                            }
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </PermissionGate>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
+              ) : undefined
+            }
+            renderRowActions={(doc) =>
+              canEditDocs && doc.source === "payment_request" ? (
+                <PermissionGate permission="PAYMENTS:UPDATE">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
+                    disabled={deleteDoc.isPending}
+                    onClick={() =>
+                      deleteDoc.mutate(doc.id, {
+                        onError: (err) =>
+                          setActionError(
+                            extractApiError(err, "Failed to delete document"),
+                          ),
+                      })
+                    }
+                    aria-label={`Delete ${doc.originalName}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </PermissionGate>
+              ) : null
+            }
+          />
 
           {(request.paymentVouchers?.length ?? 0) > 0 && (
             <Card>

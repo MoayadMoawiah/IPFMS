@@ -2,13 +2,47 @@ import { apiClient } from './client';
 
 // ── Chart of Accounts ────────────────────────────────────────────────────────
 
+export interface TrialBalanceAccount {
+  id: string;
+  code: string;
+  name: string;
+  accountType: string;
+  normalBalance: string;
+  totalDebit: number;
+  totalCredit: number;
+  balance: number;
+}
+
+export interface TrialBalanceResult {
+  accounts: TrialBalanceAccount[];
+  totals: {
+    totalDebit: number;
+    totalCredit: number;
+    isBalanced: boolean;
+  };
+}
+
+export interface CoaTreeNode {
+  id: string;
+  code: string;
+  name: string;
+  accountType: string;
+  isLeaf: boolean;
+  children?: CoaTreeNode[];
+}
+
 export async function getChartOfAccounts(query = {}) {
-  const { data } = await apiClient.get('/finance/chart-of-accounts', { params: query });
-  return data.data;
+  const { data } = await apiClient.get('/finance/accounts', { params: query });
+  return data;
+}
+
+export async function getChartOfAccountsTree() {
+  const { data } = await apiClient.get('/finance/accounts/tree');
+  return (data.data ?? []) as CoaTreeNode[];
 }
 
 export async function createAccount(dto: Record<string, unknown>) {
-  const { data } = await apiClient.post('/finance/chart-of-accounts', dto);
+  const { data } = await apiClient.post('/finance/accounts', dto);
   return data.data;
 }
 
@@ -34,9 +68,9 @@ export async function postJournalEntry(id: string) {
   return data.data;
 }
 
-export async function getTrialBalance(params: { fromDate: string; toDate: string; fiscalYearId?: string }) {
+export async function getTrialBalance(params: { periodId?: string; grantId?: string } = {}) {
   const { data } = await apiClient.get('/finance/journal-entries/trial-balance', { params });
-  return data.data;
+  return data.data as TrialBalanceResult;
 }
 
 // ── Payment Requests ─────────────────────────────────────────────────────────
@@ -105,6 +139,18 @@ export async function approvePaymentVoucher(id: string, comment?: string) {
 
 export async function markPaymentVoucherPaid(id: string, paymentDetails: Record<string, unknown>) {
   const { data } = await apiClient.post(`/finance/payment-vouchers/${id}/mark-paid`, paymentDetails);
+  return data.data;
+}
+
+// ── Cheques ──────────────────────────────────────────────────────────────────
+
+export async function getCheques(query = {}) {
+  const { data } = await apiClient.get('/finance/cheques', { params: query });
+  return data.data;
+}
+
+export async function updateChequeStatus(id: string, status: string) {
+  const { data } = await apiClient.patch(`/finance/cheques/${id}/status`, { status });
   return data.data;
 }
 

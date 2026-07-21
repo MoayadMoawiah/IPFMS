@@ -32,15 +32,15 @@ export declare class VendorInvoicesService {
                 serialNumber: string;
             } | null;
         } & {
-            currency: string;
             id: string;
+            status: import(".prisma/client").$Enums.InvoiceStatus;
             createdAt: Date;
             updatedAt: Date;
-            deletedAt: Date | null;
             createdById: string | null;
-            status: import(".prisma/client").$Enums.InvoiceStatus;
+            deletedAt: Date | null;
             serialNumber: string;
             grantId: string;
+            currency: string;
             workflowInstanceId: string | null;
             vendorId: string;
             subtotal: Prisma.Decimal;
@@ -72,58 +72,21 @@ export declare class VendorInvoicesService {
             name: string;
             code: string;
         };
-        vendor: {
-            bankAccounts: {
-                currency: string;
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
-                vendorId: string;
-                country: string | null;
-                isPrimary: boolean;
-                accountNumber: string;
-                bankName: string;
-                accountName: string;
-                iban: string | null;
-                swiftCode: string | null;
-            }[];
-        } & {
-            id: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            email: string | null;
-            arabicName: string | null;
-            phone: string | null;
-            deletedAt: Date | null;
-            createdById: string | null;
-            country: string | null;
-            address: string | null;
-            website: string | null;
-            registrationNumber: string;
-            vendorType: import(".prisma/client").$Enums.VendorType;
-            city: string | null;
-            taxNumber: string | null;
-            isBlacklisted: boolean;
-            blacklistReason: string | null;
-            blacklistDate: Date | null;
-            rating: Prisma.Decimal;
-        };
         workflow: ({
             steps: {
-                comment: string | null;
                 id: string;
-                createdAt: Date;
-                updatedAt: Date;
-                action: string | null;
-                stepNumber: number;
                 status: import(".prisma/client").$Enums.StepStatus;
                 startedAt: Date | null;
                 completedAt: Date | null;
+                createdAt: Date;
+                updatedAt: Date;
+                stepNumber: number;
                 stepName: string;
                 assignedUserId: string | null;
                 assignedRoleId: string | null;
                 dueAt: Date | null;
+                action: string | null;
+                comment: string | null;
                 digitalSignatureId: string | null;
                 instanceId: string;
             }[];
@@ -134,9 +97,9 @@ export declare class VendorInvoicesService {
                     lastName: string;
                 };
             } & {
-                comment: string | null;
                 id: string;
                 action: import(".prisma/client").$Enums.WorkflowAction;
+                comment: string | null;
                 digitalSignatureId: string | null;
                 instanceId: string;
                 actionAt: Date;
@@ -145,16 +108,53 @@ export declare class VendorInvoicesService {
             })[];
         } & {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             documentType: string;
             documentId: string;
             currentStepNumber: number;
             status: import(".prisma/client").$Enums.WorkflowStatus;
             startedAt: Date;
             completedAt: Date | null;
+            createdAt: Date;
+            updatedAt: Date;
             templateId: string;
         }) | null;
+        vendor: {
+            bankAccounts: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                currency: string;
+                vendorId: string;
+                country: string | null;
+                accountName: string;
+                bankName: string;
+                accountNumber: string;
+                iban: string | null;
+                swiftCode: string | null;
+                isPrimary: boolean;
+            }[];
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            createdById: string | null;
+            email: string | null;
+            arabicName: string | null;
+            phone: string | null;
+            deletedAt: Date | null;
+            registrationNumber: string;
+            vendorType: import(".prisma/client").$Enums.VendorType;
+            country: string | null;
+            address: string | null;
+            city: string | null;
+            website: string | null;
+            taxNumber: string | null;
+            isBlacklisted: boolean;
+            blacklistReason: string | null;
+            blacklistDate: Date | null;
+            rating: Prisma.Decimal;
+        };
         po: {
             goodsReceipts: {
                 id: string;
@@ -164,9 +164,9 @@ export declare class VendorInvoicesService {
             }[];
             items: {
                 id: string;
-                description: string;
                 createdAt: Date;
                 updatedAt: Date;
+                description: string;
                 budgetLineId: string | null;
                 poId: string;
                 specification: string | null;
@@ -177,17 +177,17 @@ export declare class VendorInvoicesService {
                 totalPrice: Prisma.Decimal;
             }[];
         } & {
-            currency: string;
             id: string;
+            status: import(".prisma/client").$Enums.DocumentStatus;
             createdAt: Date;
             updatedAt: Date;
-            deletedAt: Date | null;
             createdById: string | null;
-            status: import(".prisma/client").$Enums.DocumentStatus;
+            deletedAt: Date | null;
             serialNumber: string;
             grantId: string;
             budgetLineId: string | null;
             title: string;
+            currency: string;
             workflowInstanceId: string | null;
             prId: string | null;
             rfqId: string | null;
@@ -211,15 +211,15 @@ export declare class VendorInvoicesService {
             serialNumber: string;
             receiptDate: Date;
         } | null;
-        currency: string;
         id: string;
+        status: import(".prisma/client").$Enums.InvoiceStatus;
         createdAt: Date;
         updatedAt: Date;
-        deletedAt: Date | null;
         createdById: string | null;
-        status: import(".prisma/client").$Enums.InvoiceStatus;
+        deletedAt: Date | null;
         serialNumber: string;
         grantId: string;
+        currency: string;
         workflowInstanceId: string | null;
         vendorId: string;
         subtotal: Prisma.Decimal;
@@ -251,15 +251,15 @@ export declare class VendorInvoicesService {
             serialNumber: string;
         } | null;
     } & {
-        currency: string;
         id: string;
+        status: import(".prisma/client").$Enums.InvoiceStatus;
         createdAt: Date;
         updatedAt: Date;
-        deletedAt: Date | null;
         createdById: string | null;
-        status: import(".prisma/client").$Enums.InvoiceStatus;
+        deletedAt: Date | null;
         serialNumber: string;
         grantId: string;
+        currency: string;
         workflowInstanceId: string | null;
         vendorId: string;
         subtotal: Prisma.Decimal;
@@ -278,15 +278,15 @@ export declare class VendorInvoicesService {
         fileUrl: string | null;
     }>;
     submit(id: string, user: UserPayload): Promise<{
-        currency: string;
         id: string;
+        status: import(".prisma/client").$Enums.InvoiceStatus;
         createdAt: Date;
         updatedAt: Date;
-        deletedAt: Date | null;
         createdById: string | null;
-        status: import(".prisma/client").$Enums.InvoiceStatus;
+        deletedAt: Date | null;
         serialNumber: string;
         grantId: string;
+        currency: string;
         workflowInstanceId: string | null;
         vendorId: string;
         subtotal: Prisma.Decimal;
@@ -306,32 +306,32 @@ export declare class VendorInvoicesService {
     }>;
     approve(id: string, comment: string | undefined, user: UserPayload): Promise<{
         steps: {
-            comment: string | null;
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            action: string | null;
-            stepNumber: number;
             status: import(".prisma/client").$Enums.StepStatus;
             startedAt: Date | null;
             completedAt: Date | null;
+            createdAt: Date;
+            updatedAt: Date;
+            stepNumber: number;
             stepName: string;
             assignedUserId: string | null;
             assignedRoleId: string | null;
             dueAt: Date | null;
+            action: string | null;
+            comment: string | null;
             digitalSignatureId: string | null;
             instanceId: string;
         }[];
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         documentType: string;
         documentId: string;
         currentStepNumber: number;
         status: import(".prisma/client").$Enums.WorkflowStatus;
         startedAt: Date;
         completedAt: Date | null;
+        createdAt: Date;
+        updatedAt: Date;
         templateId: string;
     }>;
     softDelete(id: string, user: UserPayload): Promise<void>;

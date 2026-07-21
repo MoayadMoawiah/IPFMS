@@ -64,7 +64,7 @@ export class ReportsService {
         donor: true,
         budgetLines: { where: { deletedAt: null } },
         purchaseOrders: { where: { deletedAt: null, status: { in: ['APPROVED', 'CLOSED'] as any[] } } },
-        paymentVouchers: { where: { deletedAt: null, status: 'PAID' as any } },
+        paymentVouchers: { where: { deletedAt: null, status: 'CLOSED' } },
       },
     });
 

@@ -15,6 +15,15 @@ const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const client_1 = require("@prisma/client");
 const audit_service_1 = require("../audit/audit.service");
+const ADMIN_BOARD_TYPES = [
+    'PURCHASE_REQUISITION',
+    'PURCHASE_ORDER',
+    'GOODS_RECEIPT',
+    'VENDOR_INVOICE',
+    'PAYMENT_REQUEST',
+    'PAYMENT_VOUCHER',
+];
+const MIN_OVERRIDE_COMMENT = 5;
 let WorkflowService = WorkflowService_1 = class WorkflowService {
     constructor(prisma, auditService) {
         this.prisma = prisma;
@@ -417,6 +426,495 @@ let WorkflowService = WorkflowService_1 = class WorkflowService {
             default:
                 return client_1.StepStatus.IN_PROGRESS;
         }
+    }
+    canReopenCard(documentType, workflowStatus, documentStatus) {
+        if (workflowStatus !== client_1.WorkflowStatus.APPROVED &&
+            workflowStatus !== client_1.WorkflowStatus.REJECTED &&
+            workflowStatus !== client_1.WorkflowStatus.RETURNED) {
+            return false;
+        }
+        const status = String(documentStatus || '').toUpperCase();
+        if (status === client_1.DocumentStatus.CANCELLED || status === client_1.DocumentStatus.ARCHIVED) {
+            return false;
+        }
+        if (documentType === 'PAYMENT_VOUCHER' && status === client_1.DocumentStatus.CLOSED) {
+            return false;
+        }
+        if (documentType === 'PURCHASE_ORDER' &&
+            (status === client_1.DocumentStatus.ISSUED || status === client_1.DocumentStatus.CLOSED)) {
+            return false;
+        }
+        if (documentType === 'VENDOR_INVOICE' && status === 'PAID') {
+            return false;
+        }
+        return true;
+    }
+    requireOverrideComment(comment) {
+        const text = (comment || '').trim();
+        if (text.length < MIN_OVERRIDE_COMMENT) {
+            throw new common_1.BadRequestException(`Override comment is required (min ${MIN_OVERRIDE_COMMENT} characters)`);
+        }
+        return text;
+    }
+    async getAdminBoard(documentType) {
+        if (!ADMIN_BOARD_TYPES.includes(documentType)) {
+            throw new common_1.BadRequestException(`documentType must be one of: ${ADMIN_BOARD_TYPES.join(', ')}`);
+        }
+        const template = await this.prisma.workflowTemplate.findFirst({
+            where: { documentType, isActive: true },
+            include: { steps: { orderBy: { stepNumber: 'asc' } } },
+        });
+        if (!template) {
+            throw new common_1.NotFoundException(`No active workflow template for ${documentType}`);
+        }
+        const instances = await this.prisma.workflowInstance.findMany({
+            where: {
+                documentType,
+                status: {
+                    in: [
+                        client_1.WorkflowStatus.IN_PROGRESS,
+                        client_1.WorkflowStatus.APPROVED,
+                        client_1.WorkflowStatus.REJECTED,
+                        client_1.WorkflowStatus.RETURNED,
+                    ],
+                },
+            },
+            include: {
+                steps: { orderBy: { stepNumber: 'asc' } },
+                template: { include: { steps: { orderBy: { stepNumber: 'asc' } } } },
+            },
+            orderBy: { updatedAt: 'desc' },
+            take: 200,
+        });
+        const latestByDoc = new Map();
+        for (const inst of instances) {
+            if (!latestByDoc.has(inst.documentId)) {
+                latestByDoc.set(inst.documentId, inst);
+            }
+        }
+        const roleIds = [
+            ...new Set([...latestByDoc.values()].flatMap((i) => i.steps.map((s) => s.assignedRoleId).filter(Boolean))),
+        ];
+        const roleNames = await this.resolveRoleNames(roleIds);
+        const cards = await Promise.all([...latestByDoc.values()].map(async (inst) => {
+            const document = await this.resolveDocumentMetadata(inst.documentType, inst.documentId);
+            const currentStep = inst.steps.find((s) => s.stepNumber === inst.currentStepNumber);
+            let columnKey;
+            if (inst.status === client_1.WorkflowStatus.IN_PROGRESS) {
+                columnKey = `step-${inst.currentStepNumber}`;
+            }
+            else if (inst.status === client_1.WorkflowStatus.RETURNED) {
+                columnKey = 'returned';
+            }
+            else if (inst.status === client_1.WorkflowStatus.APPROVED) {
+                columnKey = 'approved';
+            }
+            else {
+                columnKey = 'rejected';
+            }
+            return {
+                instanceId: inst.id,
+                documentType: inst.documentType,
+                documentId: inst.documentId,
+                workflowStatus: inst.status,
+                currentStepNumber: inst.currentStepNumber,
+                currentStepName: currentStep?.stepName ?? null,
+                waitingForRoleName: currentStep?.assignedRoleId
+                    ? roleNames.get(currentStep.assignedRoleId) ?? null
+                    : null,
+                columnKey,
+                canMoveForward: inst.status === client_1.WorkflowStatus.IN_PROGRESS &&
+                    inst.currentStepNumber <= template.steps.length,
+                canMoveBack: inst.status === client_1.WorkflowStatus.IN_PROGRESS &&
+                    inst.currentStepNumber > 1,
+                canReturnToRequester: inst.status === client_1.WorkflowStatus.IN_PROGRESS ||
+                    inst.status === client_1.WorkflowStatus.APPROVED,
+                canReopen: this.canReopenCard(inst.documentType, inst.status, document?.status),
+                document,
+                steps: inst.steps.map((s) => ({
+                    stepNumber: s.stepNumber,
+                    stepName: s.stepName,
+                    status: s.status,
+                })),
+            };
+        }));
+        const columns = [
+            ...template.steps.map((s) => ({
+                key: `step-${s.stepNumber}`,
+                type: 'step',
+                stepNumber: s.stepNumber,
+                name: s.name,
+            })),
+            { key: 'returned', type: 'terminal', stepNumber: null, name: 'Returned' },
+            { key: 'approved', type: 'terminal', stepNumber: null, name: 'Approved' },
+            { key: 'rejected', type: 'terminal', stepNumber: null, name: 'Rejected' },
+        ];
+        return {
+            documentType,
+            template: {
+                id: template.id,
+                name: template.name,
+                steps: template.steps.map((s) => ({
+                    stepNumber: s.stepNumber,
+                    name: s.name,
+                    approverRoleId: s.approverRoleId,
+                })),
+            },
+            columns,
+            cards,
+            documentTypes: [...ADMIN_BOARD_TYPES],
+        };
+    }
+    async adminMove(instanceId, direction, actorId, comment) {
+        const text = this.requireOverrideComment(comment);
+        const instance = await this.loadInstanceForAdmin(instanceId);
+        if (instance.status !== client_1.WorkflowStatus.IN_PROGRESS) {
+            throw new common_1.BadRequestException('Only IN_PROGRESS workflows can be moved; reopen first if finished');
+        }
+        const maxStep = Math.max(...instance.steps.map((s) => s.stepNumber));
+        let target = instance.currentStepNumber;
+        if (direction === 'FORWARD') {
+            if (instance.currentStepNumber >= maxStep) {
+                return this.adminSetStep(instanceId, maxStep + 1, actorId, text, true);
+            }
+            target = instance.currentStepNumber + 1;
+        }
+        else {
+            if (instance.currentStepNumber <= 1) {
+                throw new common_1.BadRequestException('Already at the first step');
+            }
+            target = instance.currentStepNumber - 1;
+        }
+        return this.adminSetStep(instanceId, target, actorId, text, true);
+    }
+    async adminSetStep(instanceId, stepNumber, actorId, comment, commentAlreadyValidated = false) {
+        const text = commentAlreadyValidated
+            ? (comment || '').trim()
+            : this.requireOverrideComment(comment);
+        const instance = await this.loadInstanceForAdmin(instanceId);
+        const maxStep = Math.max(...instance.steps.map((s) => s.stepNumber));
+        if (!Number.isFinite(stepNumber) || stepNumber < 1) {
+            throw new common_1.BadRequestException('stepNumber must be >= 1');
+        }
+        const completing = stepNumber > maxStep;
+        const targetStep = completing ? maxStep : stepNumber;
+        await this.applyStepLayout(instance.id, instance.steps, targetStep, {
+            completeAsApproved: completing,
+            template: instance.template,
+        });
+        const nextStatus = completing
+            ? client_1.WorkflowStatus.APPROVED
+            : client_1.WorkflowStatus.IN_PROGRESS;
+        const updated = await this.prisma.workflowInstance.update({
+            where: { id: instance.id },
+            data: {
+                currentStepNumber: targetStep,
+                status: nextStatus,
+                completedAt: completing ? new Date() : null,
+            },
+            include: { steps: { orderBy: { stepNumber: 'asc' } } },
+        });
+        await this.syncDocumentStatus(instance.documentType, instance.documentId, completing ? client_1.DocumentStatus.APPROVED : client_1.DocumentStatus.SUBMITTED);
+        await this.logAdminOverride({
+            instanceId: instance.id,
+            actorId,
+            comment: text,
+            action: completing ? client_1.WorkflowAction.APPROVE : client_1.WorkflowAction.COMMENT,
+            newValues: {
+                override: 'SET_STEP',
+                stepNumber: targetStep,
+                completing,
+                workflowStatus: nextStatus,
+            },
+        });
+        return updated;
+    }
+    async adminReturnToRequester(instanceId, actorId, comment) {
+        const text = this.requireOverrideComment(comment);
+        const instance = await this.loadInstanceForAdmin(instanceId);
+        if (instance.status !== client_1.WorkflowStatus.IN_PROGRESS &&
+            instance.status !== client_1.WorkflowStatus.APPROVED) {
+            throw new common_1.BadRequestException('Return to requester is only allowed for IN_PROGRESS or APPROVED workflows');
+        }
+        const firstStep = instance.steps.find((s) => s.stepNumber === 1);
+        for (const step of instance.steps) {
+            await this.prisma.workflowInstanceStep.update({
+                where: { id: step.id },
+                data: {
+                    status: step.stepNumber === 1 ? client_1.StepStatus.IN_PROGRESS : client_1.StepStatus.PENDING,
+                    startedAt: step.stepNumber === 1 ? new Date() : null,
+                    completedAt: null,
+                    action: null,
+                    comment: null,
+                    dueAt: null,
+                },
+            });
+        }
+        const updated = await this.prisma.workflowInstance.update({
+            where: { id: instance.id },
+            data: {
+                status: client_1.WorkflowStatus.RETURNED,
+                currentStepNumber: 1,
+                completedAt: new Date(),
+            },
+            include: { steps: { orderBy: { stepNumber: 'asc' } } },
+        });
+        await this.syncDocumentStatus(instance.documentType, instance.documentId, client_1.DocumentStatus.RETURNED);
+        await this.logAdminOverride({
+            instanceId: instance.id,
+            instanceStepId: firstStep?.id,
+            actorId,
+            comment: text,
+            action: client_1.WorkflowAction.RETURN,
+            newValues: { override: 'RETURN_TO_REQUESTER' },
+        });
+        return updated;
+    }
+    async adminReopen(documentType, documentId, actorId, comment, stepNumber = 1) {
+        const text = this.requireOverrideComment(comment);
+        if (!ADMIN_BOARD_TYPES.includes(documentType)) {
+            throw new common_1.BadRequestException(`Unsupported documentType: ${documentType}`);
+        }
+        await this.assertDocumentCanReopen(documentType, documentId);
+        let instance = await this.prisma.workflowInstance.findFirst({
+            where: { documentType, documentId },
+            include: {
+                template: { include: { steps: { orderBy: { stepNumber: 'asc' } } } },
+                steps: { orderBy: { stepNumber: 'asc' } },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+        if (!instance) {
+            const started = await this.startWorkflow(documentType, documentId, actorId);
+            if (!started) {
+                throw new common_1.BadRequestException(`No workflow template available for ${documentType}`);
+            }
+            instance = await this.loadInstanceForAdmin(started.id);
+        }
+        const maxStep = Math.max(...instance.steps.map((s) => s.stepNumber));
+        const target = Math.min(Math.max(1, stepNumber || 1), maxStep);
+        await this.applyStepLayout(instance.id, instance.steps, target, {
+            completeAsApproved: false,
+            template: instance.template,
+        });
+        const updated = await this.prisma.workflowInstance.update({
+            where: { id: instance.id },
+            data: {
+                status: client_1.WorkflowStatus.IN_PROGRESS,
+                currentStepNumber: target,
+                completedAt: null,
+            },
+            include: { steps: { orderBy: { stepNumber: 'asc' } } },
+        });
+        await this.linkDocumentWorkflow(documentType, documentId, updated.id);
+        await this.syncDocumentStatus(documentType, documentId, client_1.DocumentStatus.SUBMITTED);
+        await this.logAdminOverride({
+            instanceId: updated.id,
+            actorId,
+            comment: text,
+            action: client_1.WorkflowAction.COMMENT,
+            newValues: {
+                override: 'REOPEN',
+                stepNumber: target,
+                note: 'Reopen does not reverse budget commits or journal entries',
+            },
+        });
+        return updated;
+    }
+    async loadInstanceForAdmin(instanceId) {
+        const instance = await this.prisma.workflowInstance.findUnique({
+            where: { id: instanceId },
+            include: {
+                template: { include: { steps: { orderBy: { stepNumber: 'asc' } } } },
+                steps: { orderBy: { stepNumber: 'asc' } },
+            },
+        });
+        if (!instance)
+            throw new common_1.NotFoundException('Workflow instance not found');
+        return instance;
+    }
+    async applyStepLayout(instanceId, steps, targetStep, opts) {
+        for (const step of steps) {
+            if (opts.completeAsApproved) {
+                await this.prisma.workflowInstanceStep.update({
+                    where: { id: step.id },
+                    data: {
+                        status: client_1.StepStatus.APPROVED,
+                        completedAt: new Date(),
+                        startedAt: step.stepNumber === 1 ? new Date() : undefined,
+                    },
+                });
+                continue;
+            }
+            if (step.stepNumber < targetStep) {
+                await this.prisma.workflowInstanceStep.update({
+                    where: { id: step.id },
+                    data: {
+                        status: client_1.StepStatus.APPROVED,
+                        completedAt: new Date(),
+                        startedAt: new Date(),
+                    },
+                });
+            }
+            else if (step.stepNumber === targetStep) {
+                const templateStep = opts.template.steps.find((s) => s.stepNumber === step.stepNumber);
+                const slaHours = templateStep?.slaHours ?? 48;
+                await this.prisma.workflowInstanceStep.update({
+                    where: { id: step.id },
+                    data: {
+                        status: client_1.StepStatus.IN_PROGRESS,
+                        startedAt: new Date(),
+                        completedAt: null,
+                        action: null,
+                        comment: null,
+                        dueAt: new Date(Date.now() + slaHours * 60 * 60 * 1000),
+                    },
+                });
+            }
+            else {
+                await this.prisma.workflowInstanceStep.update({
+                    where: { id: step.id },
+                    data: {
+                        status: client_1.StepStatus.PENDING,
+                        startedAt: null,
+                        completedAt: null,
+                        action: null,
+                        comment: null,
+                        dueAt: null,
+                    },
+                });
+            }
+        }
+    }
+    async assertDocumentCanReopen(documentType, documentId) {
+        const meta = await this.resolveDocumentMetadata(documentType, documentId);
+        if (!meta)
+            throw new common_1.NotFoundException('Document not found');
+        const status = String(meta.status || '').toUpperCase();
+        if (status === client_1.DocumentStatus.CANCELLED || status === client_1.DocumentStatus.ARCHIVED) {
+            throw new common_1.BadRequestException(`Cannot reopen a ${status} document`);
+        }
+        if (documentType === 'PAYMENT_VOUCHER' && status === client_1.DocumentStatus.CLOSED) {
+            throw new common_1.BadRequestException('Cannot reopen a CLOSED (paid) payment voucher — accounting has already been posted');
+        }
+        if (documentType === 'PURCHASE_ORDER' &&
+            (status === client_1.DocumentStatus.ISSUED || status === client_1.DocumentStatus.CLOSED)) {
+            throw new common_1.BadRequestException(`Cannot reopen a ${status} purchase order without reversing procurement effects`);
+        }
+        if (documentType === 'VENDOR_INVOICE' && status === 'PAID') {
+            throw new common_1.BadRequestException('Cannot reopen a PAID vendor invoice without reversing payment effects');
+        }
+    }
+    async syncDocumentStatus(documentType, documentId, status) {
+        switch (documentType) {
+            case 'PURCHASE_REQUISITION':
+                await this.prisma.purchaseRequisition.update({
+                    where: { id: documentId },
+                    data: { status },
+                });
+                break;
+            case 'PURCHASE_ORDER':
+                await this.prisma.purchaseOrder.update({
+                    where: { id: documentId },
+                    data: { status },
+                });
+                break;
+            case 'GOODS_RECEIPT':
+                await this.prisma.goodsReceipt.update({
+                    where: { id: documentId },
+                    data: { status },
+                });
+                break;
+            case 'VENDOR_INVOICE': {
+                const invoiceStatus = status === client_1.DocumentStatus.APPROVED
+                    ? client_1.InvoiceStatus.APPROVED
+                    : status === client_1.DocumentStatus.RETURNED || status === client_1.DocumentStatus.REJECTED
+                        ? client_1.InvoiceStatus.RECEIVED
+                        : client_1.InvoiceStatus.MATCHED;
+                await this.prisma.vendorInvoice.update({
+                    where: { id: documentId },
+                    data: { status: invoiceStatus },
+                });
+                break;
+            }
+            case 'PAYMENT_REQUEST':
+                await this.prisma.paymentRequest.update({
+                    where: { id: documentId },
+                    data: { status },
+                });
+                break;
+            case 'PAYMENT_VOUCHER':
+                await this.prisma.paymentVoucher.update({
+                    where: { id: documentId },
+                    data: { status },
+                });
+                break;
+            default:
+                this.logger.warn(`No document sync for type ${documentType}`);
+        }
+    }
+    async linkDocumentWorkflow(documentType, documentId, workflowInstanceId) {
+        const data = { workflowInstanceId };
+        switch (documentType) {
+            case 'PURCHASE_REQUISITION':
+                await this.prisma.purchaseRequisition.update({
+                    where: { id: documentId },
+                    data,
+                });
+                break;
+            case 'PURCHASE_ORDER':
+                await this.prisma.purchaseOrder.update({
+                    where: { id: documentId },
+                    data,
+                });
+                break;
+            case 'GOODS_RECEIPT':
+                await this.prisma.goodsReceipt.update({
+                    where: { id: documentId },
+                    data,
+                });
+                break;
+            case 'VENDOR_INVOICE':
+                await this.prisma.vendorInvoice.update({
+                    where: { id: documentId },
+                    data,
+                });
+                break;
+            case 'PAYMENT_REQUEST':
+                await this.prisma.paymentRequest.update({
+                    where: { id: documentId },
+                    data,
+                });
+                break;
+            case 'PAYMENT_VOUCHER':
+                await this.prisma.paymentVoucher.update({
+                    where: { id: documentId },
+                    data,
+                });
+                break;
+            default:
+                break;
+        }
+    }
+    async logAdminOverride(opts) {
+        await this.prisma.workflowActionLog.create({
+            data: {
+                instanceId: opts.instanceId,
+                instanceStepId: opts.instanceStepId,
+                actorId: opts.actorId,
+                action: opts.action,
+                comment: `[OVERRIDE] ${opts.comment}`,
+                actionAt: new Date(),
+            },
+        });
+        await this.auditService.log({
+            userId: opts.actorId,
+            action: client_1.AuditAction.UPDATE,
+            module: 'WORKFLOW',
+            resource: 'WorkflowInstance',
+            resourceId: opts.instanceId,
+            newValues: { ...opts.newValues, comment: opts.comment },
+        });
     }
 };
 exports.WorkflowService = WorkflowService;

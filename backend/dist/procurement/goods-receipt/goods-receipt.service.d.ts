@@ -30,10 +30,10 @@ export declare class GoodsReceiptService {
             };
         } & {
             id: string;
+            status: import(".prisma/client").$Enums.DocumentStatus;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
-            status: import(".prisma/client").$Enums.DocumentStatus;
             serialNumber: string;
             grantId: string;
             workflowInstanceId: string | null;
@@ -54,24 +54,24 @@ export declare class GoodsReceiptService {
     findOne(id: string, user?: UserPayload): Promise<{
         approvalContext: import("../../workflow/workflow.service").ApprovalContext | null;
         grant: {
-            currency: string;
             id: string;
-            name: string;
-            description: string | null;
+            status: import(".prisma/client").$Enums.GrantStatus;
             createdAt: Date;
             updatedAt: Date;
-            deletedAt: Date | null;
-            code: string;
-            startDate: Date;
-            endDate: Date;
+            name: string;
+            description: string | null;
             createdById: string | null;
-            status: import(".prisma/client").$Enums.GrantStatus;
             conditions: string | null;
+            deletedAt: Date | null;
+            currency: string;
+            code: string;
             donorId: string;
             fiscalYearId: string | null;
             totalBudget: Prisma.Decimal;
             committedAmount: Prisma.Decimal;
             spentAmount: Prisma.Decimal;
+            startDate: Date;
+            endDate: Date;
             signedDate: Date | null;
             objectives: string | null;
             coverageArea: string | null;
@@ -80,18 +80,6 @@ export declare class GoodsReceiptService {
             grantManagerId: string | null;
             projectCoordinatorId: string | null;
         };
-        warehouse: {
-            id: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            isActive: boolean;
-            deletedAt: Date | null;
-            code: string;
-            notes: string | null;
-            address: string | null;
-            managerId: string | null;
-        } | null;
         workflow: ({
             steps: ({
                 digitalSignature: ({
@@ -113,32 +101,32 @@ export declare class GoodsReceiptService {
                         })[];
                     };
                 } & {
-                    userId: string;
                     id: string;
-                    createdAt: Date;
-                    action: string;
-                    ipAddress: string;
-                    userAgent: string;
                     documentType: string;
                     documentId: string;
+                    createdAt: Date;
+                    action: string;
+                    userId: string;
+                    ipAddress: string;
+                    userAgent: string;
                     deviceFingerprint: string | null;
                     signedAt: Date;
                     certificate: string | null;
                 }) | null;
             } & {
-                comment: string | null;
                 id: string;
-                createdAt: Date;
-                updatedAt: Date;
-                action: string | null;
-                stepNumber: number;
                 status: import(".prisma/client").$Enums.StepStatus;
                 startedAt: Date | null;
                 completedAt: Date | null;
+                createdAt: Date;
+                updatedAt: Date;
+                stepNumber: number;
                 stepName: string;
                 assignedUserId: string | null;
                 assignedRoleId: string | null;
                 dueAt: Date | null;
+                action: string | null;
+                comment: string | null;
                 digitalSignatureId: string | null;
                 instanceId: string;
             })[];
@@ -161,9 +149,9 @@ export declare class GoodsReceiptService {
                     })[];
                 };
             } & {
-                comment: string | null;
                 id: string;
                 action: import(".prisma/client").$Enums.WorkflowAction;
+                comment: string | null;
                 digitalSignatureId: string | null;
                 instanceId: string;
                 actionAt: Date;
@@ -172,22 +160,22 @@ export declare class GoodsReceiptService {
             })[];
         } & {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             documentType: string;
             documentId: string;
             currentStepNumber: number;
             status: import(".prisma/client").$Enums.WorkflowStatus;
             startedAt: Date;
             completedAt: Date | null;
+            createdAt: Date;
+            updatedAt: Date;
             templateId: string;
         }) | null;
         items: ({
             poItem: {
                 id: string;
-                description: string;
                 createdAt: Date;
                 updatedAt: Date;
+                description: string;
                 budgetLineId: string | null;
                 poId: string;
                 specification: string | null;
@@ -199,9 +187,9 @@ export declare class GoodsReceiptService {
             };
         } & {
             id: string;
-            description: string;
             createdAt: Date;
             updatedAt: Date;
+            description: string;
             notes: string | null;
             grnId: string;
             orderedQuantity: Prisma.Decimal;
@@ -212,15 +200,11 @@ export declare class GoodsReceiptService {
             damagedQuantity: Prisma.Decimal;
         })[];
         po: {
-            vendor: {
-                id: string;
-                name: string;
-            };
             items: {
                 id: string;
-                description: string;
                 createdAt: Date;
                 updatedAt: Date;
+                description: string;
                 budgetLineId: string | null;
                 poId: string;
                 specification: string | null;
@@ -230,18 +214,22 @@ export declare class GoodsReceiptService {
                 unitPrice: Prisma.Decimal;
                 totalPrice: Prisma.Decimal;
             }[];
+            vendor: {
+                id: string;
+                name: string;
+            };
         } & {
-            currency: string;
             id: string;
+            status: import(".prisma/client").$Enums.DocumentStatus;
             createdAt: Date;
             updatedAt: Date;
-            deletedAt: Date | null;
             createdById: string | null;
-            status: import(".prisma/client").$Enums.DocumentStatus;
+            deletedAt: Date | null;
             serialNumber: string;
             grantId: string;
             budgetLineId: string | null;
             title: string;
+            currency: string;
             workflowInstanceId: string | null;
             prId: string | null;
             rfqId: string | null;
@@ -259,6 +247,18 @@ export declare class GoodsReceiptService {
             issuedById: string | null;
             issuedAt: Date | null;
         };
+        warehouse: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            isActive: boolean;
+            deletedAt: Date | null;
+            notes: string | null;
+            code: string;
+            address: string | null;
+            managerId: string | null;
+        } | null;
         receivedBy: {
             id: string;
             email: string;
@@ -277,10 +277,10 @@ export declare class GoodsReceiptService {
             })[];
         };
         id: string;
+        status: import(".prisma/client").$Enums.DocumentStatus;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
-        status: import(".prisma/client").$Enums.DocumentStatus;
         serialNumber: string;
         grantId: string;
         workflowInstanceId: string | null;
@@ -294,9 +294,9 @@ export declare class GoodsReceiptService {
     create(dto: any, user: UserPayload): Promise<{
         items: {
             id: string;
-            description: string;
             createdAt: Date;
             updatedAt: Date;
+            description: string;
             notes: string | null;
             grnId: string;
             orderedQuantity: Prisma.Decimal;
@@ -308,10 +308,10 @@ export declare class GoodsReceiptService {
         }[];
     } & {
         id: string;
+        status: import(".prisma/client").$Enums.DocumentStatus;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
-        status: import(".prisma/client").$Enums.DocumentStatus;
         serialNumber: string;
         grantId: string;
         workflowInstanceId: string | null;
@@ -325,24 +325,24 @@ export declare class GoodsReceiptService {
     update(id: string, dto: any, user: UserPayload): Promise<{
         approvalContext: import("../../workflow/workflow.service").ApprovalContext | null;
         grant: {
-            currency: string;
             id: string;
-            name: string;
-            description: string | null;
+            status: import(".prisma/client").$Enums.GrantStatus;
             createdAt: Date;
             updatedAt: Date;
-            deletedAt: Date | null;
-            code: string;
-            startDate: Date;
-            endDate: Date;
+            name: string;
+            description: string | null;
             createdById: string | null;
-            status: import(".prisma/client").$Enums.GrantStatus;
             conditions: string | null;
+            deletedAt: Date | null;
+            currency: string;
+            code: string;
             donorId: string;
             fiscalYearId: string | null;
             totalBudget: Prisma.Decimal;
             committedAmount: Prisma.Decimal;
             spentAmount: Prisma.Decimal;
+            startDate: Date;
+            endDate: Date;
             signedDate: Date | null;
             objectives: string | null;
             coverageArea: string | null;
@@ -351,18 +351,6 @@ export declare class GoodsReceiptService {
             grantManagerId: string | null;
             projectCoordinatorId: string | null;
         };
-        warehouse: {
-            id: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            isActive: boolean;
-            deletedAt: Date | null;
-            code: string;
-            notes: string | null;
-            address: string | null;
-            managerId: string | null;
-        } | null;
         workflow: ({
             steps: ({
                 digitalSignature: ({
@@ -384,32 +372,32 @@ export declare class GoodsReceiptService {
                         })[];
                     };
                 } & {
-                    userId: string;
                     id: string;
-                    createdAt: Date;
-                    action: string;
-                    ipAddress: string;
-                    userAgent: string;
                     documentType: string;
                     documentId: string;
+                    createdAt: Date;
+                    action: string;
+                    userId: string;
+                    ipAddress: string;
+                    userAgent: string;
                     deviceFingerprint: string | null;
                     signedAt: Date;
                     certificate: string | null;
                 }) | null;
             } & {
-                comment: string | null;
                 id: string;
-                createdAt: Date;
-                updatedAt: Date;
-                action: string | null;
-                stepNumber: number;
                 status: import(".prisma/client").$Enums.StepStatus;
                 startedAt: Date | null;
                 completedAt: Date | null;
+                createdAt: Date;
+                updatedAt: Date;
+                stepNumber: number;
                 stepName: string;
                 assignedUserId: string | null;
                 assignedRoleId: string | null;
                 dueAt: Date | null;
+                action: string | null;
+                comment: string | null;
                 digitalSignatureId: string | null;
                 instanceId: string;
             })[];
@@ -432,9 +420,9 @@ export declare class GoodsReceiptService {
                     })[];
                 };
             } & {
-                comment: string | null;
                 id: string;
                 action: import(".prisma/client").$Enums.WorkflowAction;
+                comment: string | null;
                 digitalSignatureId: string | null;
                 instanceId: string;
                 actionAt: Date;
@@ -443,22 +431,22 @@ export declare class GoodsReceiptService {
             })[];
         } & {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             documentType: string;
             documentId: string;
             currentStepNumber: number;
             status: import(".prisma/client").$Enums.WorkflowStatus;
             startedAt: Date;
             completedAt: Date | null;
+            createdAt: Date;
+            updatedAt: Date;
             templateId: string;
         }) | null;
         items: ({
             poItem: {
                 id: string;
-                description: string;
                 createdAt: Date;
                 updatedAt: Date;
+                description: string;
                 budgetLineId: string | null;
                 poId: string;
                 specification: string | null;
@@ -470,9 +458,9 @@ export declare class GoodsReceiptService {
             };
         } & {
             id: string;
-            description: string;
             createdAt: Date;
             updatedAt: Date;
+            description: string;
             notes: string | null;
             grnId: string;
             orderedQuantity: Prisma.Decimal;
@@ -483,15 +471,11 @@ export declare class GoodsReceiptService {
             damagedQuantity: Prisma.Decimal;
         })[];
         po: {
-            vendor: {
-                id: string;
-                name: string;
-            };
             items: {
                 id: string;
-                description: string;
                 createdAt: Date;
                 updatedAt: Date;
+                description: string;
                 budgetLineId: string | null;
                 poId: string;
                 specification: string | null;
@@ -501,18 +485,22 @@ export declare class GoodsReceiptService {
                 unitPrice: Prisma.Decimal;
                 totalPrice: Prisma.Decimal;
             }[];
+            vendor: {
+                id: string;
+                name: string;
+            };
         } & {
-            currency: string;
             id: string;
+            status: import(".prisma/client").$Enums.DocumentStatus;
             createdAt: Date;
             updatedAt: Date;
-            deletedAt: Date | null;
             createdById: string | null;
-            status: import(".prisma/client").$Enums.DocumentStatus;
+            deletedAt: Date | null;
             serialNumber: string;
             grantId: string;
             budgetLineId: string | null;
             title: string;
+            currency: string;
             workflowInstanceId: string | null;
             prId: string | null;
             rfqId: string | null;
@@ -530,6 +518,18 @@ export declare class GoodsReceiptService {
             issuedById: string | null;
             issuedAt: Date | null;
         };
+        warehouse: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            isActive: boolean;
+            deletedAt: Date | null;
+            notes: string | null;
+            code: string;
+            address: string | null;
+            managerId: string | null;
+        } | null;
         receivedBy: {
             id: string;
             email: string;
@@ -548,10 +548,10 @@ export declare class GoodsReceiptService {
             })[];
         };
         id: string;
+        status: import(".prisma/client").$Enums.DocumentStatus;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
-        status: import(".prisma/client").$Enums.DocumentStatus;
         serialNumber: string;
         grantId: string;
         workflowInstanceId: string | null;
@@ -564,10 +564,10 @@ export declare class GoodsReceiptService {
     }>;
     submit(id: string, user: UserPayload): Promise<{
         id: string;
+        status: import(".prisma/client").$Enums.DocumentStatus;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
-        status: import(".prisma/client").$Enums.DocumentStatus;
         serialNumber: string;
         grantId: string;
         workflowInstanceId: string | null;
@@ -580,92 +580,92 @@ export declare class GoodsReceiptService {
     }>;
     approve(id: string, comment: string | undefined, user: UserPayload): Promise<{
         steps: {
-            comment: string | null;
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            action: string | null;
-            stepNumber: number;
             status: import(".prisma/client").$Enums.StepStatus;
             startedAt: Date | null;
             completedAt: Date | null;
+            createdAt: Date;
+            updatedAt: Date;
+            stepNumber: number;
             stepName: string;
             assignedUserId: string | null;
             assignedRoleId: string | null;
             dueAt: Date | null;
+            action: string | null;
+            comment: string | null;
             digitalSignatureId: string | null;
             instanceId: string;
         }[];
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         documentType: string;
         documentId: string;
         currentStepNumber: number;
         status: import(".prisma/client").$Enums.WorkflowStatus;
         startedAt: Date;
         completedAt: Date | null;
+        createdAt: Date;
+        updatedAt: Date;
         templateId: string;
     }>;
     reject(id: string, comment: string, user: UserPayload): Promise<{
         steps: {
-            comment: string | null;
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            action: string | null;
-            stepNumber: number;
             status: import(".prisma/client").$Enums.StepStatus;
             startedAt: Date | null;
             completedAt: Date | null;
+            createdAt: Date;
+            updatedAt: Date;
+            stepNumber: number;
             stepName: string;
             assignedUserId: string | null;
             assignedRoleId: string | null;
             dueAt: Date | null;
+            action: string | null;
+            comment: string | null;
             digitalSignatureId: string | null;
             instanceId: string;
         }[];
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         documentType: string;
         documentId: string;
         currentStepNumber: number;
         status: import(".prisma/client").$Enums.WorkflowStatus;
         startedAt: Date;
         completedAt: Date | null;
+        createdAt: Date;
+        updatedAt: Date;
         templateId: string;
     }>;
     return_(id: string, comment: string, user: UserPayload): Promise<{
         steps: {
-            comment: string | null;
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            action: string | null;
-            stepNumber: number;
             status: import(".prisma/client").$Enums.StepStatus;
             startedAt: Date | null;
             completedAt: Date | null;
+            createdAt: Date;
+            updatedAt: Date;
+            stepNumber: number;
             stepName: string;
             assignedUserId: string | null;
             assignedRoleId: string | null;
             dueAt: Date | null;
+            action: string | null;
+            comment: string | null;
             digitalSignatureId: string | null;
             instanceId: string;
         }[];
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         documentType: string;
         documentId: string;
         currentStepNumber: number;
         status: import(".prisma/client").$Enums.WorkflowStatus;
         startedAt: Date;
         completedAt: Date | null;
+        createdAt: Date;
+        updatedAt: Date;
         templateId: string;
     }>;
     uploadDocuments(grnId: string, files: Express.Multer.File[], labels: string[], user: UserPayload): Promise<any[]>;
@@ -677,10 +677,10 @@ export declare class GoodsReceiptService {
         };
     } & {
         id: string;
-        createdAt: Date;
-        deletedAt: Date | null;
         documentType: string;
         documentId: string;
+        createdAt: Date;
+        deletedAt: Date | null;
         fileUrl: string;
         fileName: string;
         originalName: string;

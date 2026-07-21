@@ -11,9 +11,21 @@ export interface DocumentAttachment {
   fileUrl: string;
   storageKey: string;
   uploadedById: string;
-  uploadedBy?: { id: string; firstName: string; lastName: string };
+  uploadedBy?: { id: string; firstName: string; lastName: string } | null;
   createdAt: string;
   deletedAt: string | null;
+}
+
+export type SupportingDocumentSource =
+  | 'pr'
+  | 'po'
+  | 'grn'
+  | 'invoice'
+  | 'payment_request'
+  | 'payment_voucher';
+
+export interface SupportingDocument extends DocumentAttachment {
+  source: SupportingDocumentSource;
 }
 
 export async function uploadGrantDocument(
@@ -232,5 +244,49 @@ export async function deletePaymentRequestDocument(
 ): Promise<void> {
   await apiClient.delete(
     `/finance/payment-requests/${paymentRequestId}/documents/${attachmentId}`,
+  );
+}
+
+export async function getPaymentRequestSupportingDocuments(
+  paymentRequestId: string,
+): Promise<SupportingDocument[]> {
+  const { data } = await apiClient.get<{ data: SupportingDocument[] }>(
+    `/finance/payment-requests/${paymentRequestId}/supporting-documents`,
+  );
+  return data.data;
+}
+
+export async function getPaymentVoucherSupportingDocuments(
+  paymentVoucherId: string,
+): Promise<SupportingDocument[]> {
+  const { data } = await apiClient.get<{ data: SupportingDocument[] }>(
+    `/finance/payment-vouchers/${paymentVoucherId}/supporting-documents`,
+  );
+  return data.data;
+}
+
+export async function uploadPaymentVoucherDocuments(
+  paymentVoucherId: string,
+  files: File[],
+  labels: string[],
+): Promise<DocumentAttachment[]> {
+  const form = new FormData();
+  files.forEach((f) => form.append('files', f));
+  form.append('labels', JSON.stringify(labels));
+
+  const { data } = await apiClient.post<{ data: DocumentAttachment[] }>(
+    `/finance/payment-vouchers/${paymentVoucherId}/documents`,
+    form,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  );
+  return data.data;
+}
+
+export async function deletePaymentVoucherDocument(
+  paymentVoucherId: string,
+  attachmentId: string,
+): Promise<void> {
+  await apiClient.delete(
+    `/finance/payment-vouchers/${paymentVoucherId}/documents/${attachmentId}`,
   );
 }

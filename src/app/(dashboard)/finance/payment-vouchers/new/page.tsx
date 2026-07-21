@@ -1,8 +1,9 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -24,26 +25,39 @@ import {
   FormField,
   FormSection,
 } from "@/components/forms/form-layout";
+import {
+  SupportingDocumentsField,
+  markAllStagedFiles,
+  type StagedFile,
+} from "@/components/forms/supporting-documents-field";
+import {
+  SupportingDocumentsReview,
+  useSupportingDocumentsReview,
+} from "@/components/workflow/supporting-documents-review";
 import { LoadingSkeleton } from "@/components/shared/loading-skeleton";
-import { useGrants } from "@/hooks/use-grants";
 import { getPaginatedItems } from "@/lib/api/pagination";
 import {
   useCreatePaymentVoucher,
   usePaymentRequest,
+  usePaymentRequests,
 } from "@/hooks/use-finance";
+import {
+  getPaymentRequestSupportingDocuments,
+  uploadPaymentVoucherDocuments,
+  type SupportingDocument,
+} from "@/lib/api/uploads";
 import { extractApiError } from "@/lib/api-errors";
-import type { Grant } from "@/lib/api/grants";
+import { formatCurrency } from "@/lib/formatters";
 
-const PAYEE_TYPES = [
-  { value: "VENDOR", label: "Vendor" },
-  { value: "EMPLOYEE", label: "Employee" },
-  { value: "PETTY_CASH", label: "Petty Cash" },
-  { value: "OTHER", label: "Other" },
+const VOUCHER_DOCUMENT_LABELS = [
+  "Payment support",
+  "Bank advice",
+  "Signed voucher",
+  "Other",
 ] as const;
 
-const CURRENCIES = ["USD", "EUR", "GBP", "SDG", "SAR", "AED", "EGP"];
-
 const schema = z.object({
+  paymentRequestId: z.string().min(1, "Payment request is required"),
   grantId: z.string().min(1, "Grant is required"),
   payeeName: z.string().min(1, "Payee name is required"),
   payeeType: z.string().optional(),
@@ -60,16 +74,57 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+function InfoRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <div className="truncate text-sm font-medium">{value || "—"}</div>
+    </div>
+  );
+}
+
+type PrListItem = {
+  id: string;
+  serialNumber: string;
+  status: string;
+  totalAmount: number | string;
+  currency: string;
+  grant?: { code?: string; name?: string } | null;
+  invoice?: {
+    serialNumber?: string;
+    invoiceNumber?: string;
+    vendor?: { name?: string } | null;
+  } | null;
+};
+
 function NewPaymentVoucherForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const paymentRequestId = searchParams.get("paymentRequestId") ?? "";
+  const initialPrId = searchParams.get("paymentRequestId") ?? "";
+  const [selectedPrId, setSelectedPrId] = useState(initialPrId);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: grantsData, isLoading: loadingGrants } = useGrants({ limit: 100 });
-  const grants: Grant[] = getPaginatedItems(grantsData);
-  const { data: prData, isLoading: loadingPr } = usePaymentRequest(paymentRequestId);
+  const { data: availablePrData, isLoading: loadingPrList } = usePaymentRequests({
+    availableForVoucher: true,
+    limit: 100,
+  });
+  const availablePrs = getPaginatedItems(availablePrData) as PrListItem[];
+
+  const { data: prData, isLoading: loadingPr } = usePaymentRequest(selectedPrId);
   const createVoucher = useCreatePaymentVoucher();
+
+  const { data: supportingDocuments = [], isLoading: loadingDocs } = useQuery({
+    queryKey: ["payment-request-supporting-documents", selectedPrId],
+    queryFn: () => getPaymentRequestSupportingDocuments(selectedPrId),
+    enabled: Boolean(selectedPrId),
+  });
+
+  const { markViewed, viewedAttachmentIds } = useSupportingDocumentsReview(
+    supportingDocuments,
+    false,
+  );
 
   const pr = prData as
     | {
@@ -79,21 +134,25 @@ function NewPaymentVoucherForm() {
         totalAmount: number | string;
         currency: string;
         grantId: string;
-        grant?: { code?: string; name?: string } | null;
+        paymentMethod?: string;
+        methodDetails?: Record<string, string | null> | null;
+        grant?: { id?: string; code?: string; name?: string } | null;
         invoice?: {
+          id?: string;
           invoiceNumber?: string;
           serialNumber?: string;
           vendor?: { id?: string; name?: string } | null;
+          po?: { id?: string; serialNumber?: string } | null;
+          grn?: { id?: string; serialNumber?: string } | null;
         } | null;
-        paymentVouchers?: Array<{ status: string }>;
+        paymentVouchers?: Array<{ id?: string; serialNumber?: string; status: string }>;
       }
     | undefined;
 
-  const fromPr = Boolean(paymentRequestId);
   const prApproved = pr?.status?.toUpperCase() === "APPROVED";
-  const hasOpenVoucher = (pr?.paymentVouchers ?? []).some(
-    (v) => v.status.toUpperCase() !== "PAID",
-  );
+  const existingVoucher = (pr?.paymentVouchers ?? [])[0];
+  const hasExistingVoucher = Boolean(existingVoucher);
+  const prSelectable = Boolean(pr && prApproved && !hasExistingVoucher);
 
   const {
     register,
@@ -104,6 +163,7 @@ function NewPaymentVoucherForm() {
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
+      paymentRequestId: initialPrId,
       grantId: "",
       payeeName: "",
       payeeType: "VENDOR",
@@ -116,8 +176,34 @@ function NewPaymentVoucherForm() {
     },
   });
 
+  const currency = watch("currency");
+
+  const prOptions = useMemo(() => {
+    const map = new Map<string, PrListItem>();
+    for (const item of availablePrs) {
+      map.set(item.id, item);
+    }
+    if (pr?.id && !map.has(pr.id)) {
+      map.set(pr.id, {
+        id: pr.id,
+        serialNumber: pr.serialNumber,
+        status: pr.status,
+        totalAmount: pr.totalAmount,
+        currency: pr.currency,
+        grant: pr.grant,
+        invoice: pr.invoice,
+      });
+    }
+    return Array.from(map.values());
+  }, [availablePrs, pr]);
+
+  const grantLabel = pr?.grant?.code || pr?.grant?.name
+    ? [pr.grant.code, pr.grant.name].filter(Boolean).join(" — ")
+    : "—";
+
   useEffect(() => {
-    if (!pr || !prApproved) return;
+    setValue("paymentRequestId", selectedPrId, { shouldValidate: true });
+    if (!pr || !prApproved || hasExistingVoucher) return;
     setValue("grantId", pr.grantId, { shouldValidate: true });
     setValue("payeeType", "VENDOR");
     setValue("payeeName", pr.invoice?.vendor?.name || "", { shouldValidate: true });
@@ -129,12 +215,24 @@ function NewPaymentVoucherForm() {
       { shouldValidate: true },
     );
     setValue("reference", pr.serialNumber);
-  }, [pr, prApproved, setValue]);
+  }, [selectedPrId, pr, prApproved, hasExistingVoucher, setValue]);
 
-  const onSubmit = (values: FormValues) => {
+  const handleSelectPr = (id: string) => {
+    setSelectedPrId(id);
     setSubmitError(null);
-    createVoucher.mutate(
-      {
+  };
+
+  const handleOpenSupportingDoc = (doc: SupportingDocument) => {
+    markViewed(doc.id);
+    window.open(doc.fileUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const onSubmit = async (values: FormValues) => {
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
+      const voucher = await createVoucher.mutateAsync({
+        paymentRequestId: values.paymentRequestId,
         grantId: values.grantId,
         payeeName: values.payeeName,
         payeeType: values.payeeType || "VENDOR",
@@ -145,54 +243,48 @@ function NewPaymentVoucherForm() {
         currency: values.currency,
         exchangeRate: Number(values.exchangeRate || 1),
         reference: values.reference || undefined,
-        paymentRequestId: paymentRequestId || undefined,
-      },
-      {
-        onSuccess: (voucher) => router.push(`/finance/payment-vouchers/${voucher.id}`),
-        onError: (err) =>
-          setSubmitError(extractApiError(err, "Failed to create payment voucher")),
-      },
-    );
+      });
+
+      if (stagedFiles.length > 0) {
+        const files = stagedFiles.map((s) => s.file);
+        const labels = stagedFiles.map((s) => s.label);
+        markAllStagedFiles(setStagedFiles, "uploading");
+        try {
+          await uploadPaymentVoucherDocuments(voucher.id, files, labels);
+          markAllStagedFiles(setStagedFiles, "success");
+        } catch (uploadErr) {
+          markAllStagedFiles(
+            setStagedFiles,
+            "error",
+            extractApiError(uploadErr, "Document upload failed"),
+          );
+          setSubmitError(
+            extractApiError(
+              uploadErr,
+              "Voucher created but document upload failed. You can upload on the voucher page.",
+            ),
+          );
+          router.push(`/finance/payment-vouchers/${voucher.id}`);
+          return;
+        }
+      }
+
+      router.push(`/finance/payment-vouchers/${voucher.id}`);
+    } catch (err) {
+      setSubmitError(extractApiError(err, "Failed to create payment voucher"));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  if (fromPr && loadingPr) {
-    return <LoadingSkeleton variant="cards" />;
-  }
-
-  if (fromPr && (!pr || !prApproved || hasOpenVoucher)) {
-    return (
-      <div className="flex flex-col items-center gap-3 py-16 text-destructive">
-        <p className="text-sm">
-          {!pr
-            ? "Payment request not found."
-            : !prApproved
-              ? "Only an APPROVED payment request can create a voucher."
-              : "An open payment voucher already exists for this request."}
-        </p>
-        <Button variant="outline" asChild>
-          <Link
-            href={
-              paymentRequestId
-                ? `/finance/payment-requests/${paymentRequestId}`
-                : "/finance/payment-requests"
-            }
-          >
-            Back
-          </Link>
-        </Button>
-      </div>
-    );
-  }
+  const methodDetails = (pr?.methodDetails || {}) as Record<string, string | null>;
+  const paymentMethodLabel = (pr?.paymentMethod || "").replace(/_/g, " ") || "—";
 
   return (
     <div>
       <PageHeader
         title="New Payment Voucher"
-        description={
-          fromPr
-            ? `Create voucher from payment request ${pr?.serialNumber}`
-            : "Create a payment voucher for disbursement"
-        }
+        description="Create a payment voucher from an approved payment request"
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Payment Vouchers", href: "/finance/payment-vouchers" },
@@ -202,8 +294,8 @@ function NewPaymentVoucherForm() {
           <Button variant="outline" asChild>
             <Link
               href={
-                fromPr
-                  ? `/finance/payment-requests/${paymentRequestId}`
+                selectedPrId
+                  ? `/finance/payment-requests/${selectedPrId}`
                   : "/finance/payment-vouchers"
               }
             >
@@ -217,160 +309,316 @@ function NewPaymentVoucherForm() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-4xl">
         {submitError && <FormErrorBanner message={submitError} />}
 
-        {fromPr && pr && (
-          <div className="rounded-md border bg-muted/40 px-4 py-3 text-sm">
-            Linked payment request:{" "}
-            <Link
-              href={`/finance/payment-requests/${pr.id}`}
-              className="text-primary hover:underline"
+        <FormSection title="Payment request" contentClassName="grid-cols-1">
+          <FormField
+            label="Payment Request"
+            htmlFor="paymentRequestId"
+            required
+            error={errors.paymentRequestId?.message}
+          >
+            <Select
+              value={selectedPrId || undefined}
+              onValueChange={handleSelectPr}
+              disabled={loadingPrList}
             >
-              {pr.serialNumber}
-            </Link>
-            {pr.invoice?.vendor?.name ? ` — ${pr.invoice.vendor.name}` : ""}
+              <SelectTrigger id="paymentRequestId">
+                <SelectValue
+                  placeholder={
+                    loadingPrList
+                      ? "Loading payment requests…"
+                      : "Select an approved payment request"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {prOptions.length === 0 ? (
+                  <SelectItem value="__none" disabled>
+                    No approved payment requests available
+                  </SelectItem>
+                ) : (
+                  prOptions.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {item.serialNumber}
+                      {item.invoice?.vendor?.name
+                        ? ` — ${item.invoice.vendor.name}`
+                        : ""}
+                      {item.grant?.code ? ` (${item.grant.code})` : ""}
+                      {" · "}
+                      {formatCurrency(Number(item.totalAmount), item.currency)}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Every voucher must reference an approved payment request that does not
+              already have a voucher.{" "}
+              <Link
+                href="/finance/payment-requests"
+                className="text-primary hover:underline"
+              >
+                Browse payment requests
+              </Link>
+            </p>
+          </FormField>
+        </FormSection>
+
+        {selectedPrId && loadingPr && <LoadingSkeleton variant="cards" />}
+
+        {selectedPrId && !loadingPr && (!pr || !prApproved || hasExistingVoucher) && (
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {!pr
+              ? "Payment request not found."
+              : !prApproved
+                ? "Only an APPROVED payment request can create a voucher."
+                : `A payment voucher already exists for this request${
+                    existingVoucher?.serialNumber
+                      ? ` (${existingVoucher.serialNumber})`
+                      : ""
+                  }. Only one voucher is allowed per payment request.`}
+            <div className="mt-2 flex flex-wrap gap-2">
+              {existingVoucher?.id && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/finance/payment-vouchers/${existingVoucher.id}`}>
+                    Open existing voucher
+                  </Link>
+                </Button>
+              )}
+              {selectedPrId && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/finance/payment-requests/${selectedPrId}`}>
+                    Open payment request
+                  </Link>
+                </Button>
+              )}
+            </div>
           </div>
         )}
 
-        <FormSection title="Payment Details">
-          <FormField label="Grant" htmlFor="grantId" required error={errors.grantId?.message}>
-            <Select
-              value={watch("grantId")}
-              onValueChange={(v) => setValue("grantId", v, { shouldValidate: true })}
-              disabled={fromPr}
-            >
-              <SelectTrigger id="grantId" disabled={loadingGrants || fromPr}>
-                <SelectValue placeholder={loadingGrants ? "Loading grants…" : "Select grant"} />
-              </SelectTrigger>
-              <SelectContent>
-                {grants.map((g) => (
-                  <SelectItem key={g.id} value={g.id}>
-                    {g.code} — {g.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
+        {prSelectable && pr && (
+          <>
+            <FormSection title="From payment request" contentClassName="grid-cols-1">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 rounded-md border bg-muted/30 p-4">
+                <InfoRow
+                  label="Payment request"
+                  value={
+                    <Link
+                      href={`/finance/payment-requests/${pr.id}`}
+                      className="text-primary hover:underline"
+                    >
+                      {pr.serialNumber}
+                    </Link>
+                  }
+                />
+                <InfoRow label="Grant" value={grantLabel} />
+                <InfoRow
+                  label="Amount"
+                  value={formatCurrency(Number(pr.totalAmount), pr.currency)}
+                />
+                <InfoRow
+                  label="Invoice"
+                  value={
+                    pr.invoice ? (
+                      pr.invoice.id ? (
+                        <Link
+                          href={`/procurement/vendor-invoices/${pr.invoice.id}`}
+                          className="text-primary hover:underline"
+                        >
+                          {pr.invoice.serialNumber}
+                          {pr.invoice.invoiceNumber
+                            ? ` (${pr.invoice.invoiceNumber})`
+                            : ""}
+                        </Link>
+                      ) : (
+                        `${pr.invoice.serialNumber || "—"}${
+                          pr.invoice.invoiceNumber
+                            ? ` (${pr.invoice.invoiceNumber})`
+                            : ""
+                        }`
+                      )
+                    ) : (
+                      "—"
+                    )
+                  }
+                />
+                <InfoRow label="Vendor / payee" value={pr.invoice?.vendor?.name} />
+                <InfoRow label="Payment method" value={paymentMethodLabel} />
+                <InfoRow
+                  label="Purchase order"
+                  value={
+                    pr.invoice?.po ? (
+                      <Link
+                        href={`/procurement/purchase-orders/${pr.invoice.po.id}`}
+                        className="text-primary hover:underline"
+                      >
+                        {pr.invoice.po.serialNumber}
+                      </Link>
+                    ) : (
+                      "—"
+                    )
+                  }
+                />
+                <InfoRow
+                  label="Goods receipt"
+                  value={
+                    pr.invoice?.grn ? (
+                      <Link
+                        href={`/procurement/goods-receipt/${pr.invoice.grn.id}`}
+                        className="text-primary hover:underline"
+                      >
+                        {pr.invoice.grn.serialNumber}
+                      </Link>
+                    ) : (
+                      "—"
+                    )
+                  }
+                />
+                {pr.paymentMethod === "CHEQUE" && (
+                  <>
+                    <InfoRow label="Bank name" value={methodDetails.bankName} />
+                    <InfoRow label="Cheque No" value={methodDetails.chequeNumber} />
+                    <InfoRow label="Cheque payee" value={methodDetails.payeeName} />
+                  </>
+                )}
+                {pr.paymentMethod === "BANK_TRANSFER" && (
+                  <>
+                    <InfoRow label="Bank name" value={methodDetails.bankName} />
+                    <InfoRow label="Account No" value={methodDetails.accountNumber} />
+                    <InfoRow label="IBAN" value={methodDetails.iban} />
+                  </>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Grant, payee, and currency are taken from the payment request. Enter
+                payment date and confirm the voucher details below.
+              </p>
+            </FormSection>
 
-          <FormField label="Payee Type" htmlFor="payeeType">
-            <Select
-              value={watch("payeeType")}
-              onValueChange={(v) => setValue("payeeType", v)}
-              disabled={fromPr}
-            >
-              <SelectTrigger id="payeeType" disabled={fromPr}>
-                <SelectValue placeholder="Select payee type" />
-              </SelectTrigger>
-              <SelectContent>
-                {PAYEE_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
+            <FormSection title="Payment Details">
+              <FormField label="Grant" htmlFor="grantDisplay" required>
+                <Input id="grantDisplay" value={grantLabel} readOnly disabled />
+                <input type="hidden" {...register("grantId")} />
+              </FormField>
+              <FormField label="Payee Type" htmlFor="payeeTypeDisplay">
+                <Input id="payeeTypeDisplay" value="Vendor" readOnly disabled />
+                <input type="hidden" {...register("payeeType")} />
+              </FormField>
+              <FormField
+                label="Payee Name"
+                htmlFor="payeeName"
+                required
+                error={errors.payeeName?.message}
+                className="sm:col-span-2"
+              >
+                <Input id="payeeName" readOnly disabled {...register("payeeName")} />
+              </FormField>
+              <FormField
+                label="Payment Date"
+                htmlFor="paymentDate"
+                required
+                error={errors.paymentDate?.message}
+              >
+                <Input id="paymentDate" type="date" {...register("paymentDate")} />
+              </FormField>
+              <FormField label="Reference" htmlFor="reference">
+                <Input
+                  id="reference"
+                  placeholder="Invoice or reference number"
+                  {...register("reference")}
+                />
+              </FormField>
+            </FormSection>
 
-          <FormField
-            label="Payee Name"
-            htmlFor="payeeName"
-            required
-            error={errors.payeeName?.message}
-            className="sm:col-span-2"
-          >
-            <Input
-              id="payeeName"
-              placeholder="Vendor or recipient name"
-              disabled={fromPr}
-              {...register("payeeName")}
+            <FormSection title="Amount">
+              <FormField label="Currency" htmlFor="currencyDisplay" required>
+                <Input id="currencyDisplay" value={currency} readOnly disabled />
+                <input type="hidden" {...register("currency")} />
+              </FormField>
+              <FormField
+                label="Amount"
+                htmlFor="amount"
+                required
+                error={errors.amount?.message}
+              >
+                <Input
+                  id="amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  max={Number(pr.totalAmount)}
+                  placeholder="0.00"
+                  {...register("amount")}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Max {formatCurrency(Number(pr.totalAmount), pr.currency)} from
+                  payment request
+                </p>
+              </FormField>
+              <FormField label="Exchange Rate" htmlFor="exchangeRate">
+                <Input
+                  id="exchangeRate"
+                  type="number"
+                  min="0"
+                  step="0.0001"
+                  placeholder="1.0000"
+                  {...register("exchangeRate")}
+                />
+              </FormField>
+            </FormSection>
+
+            <FormSection title="Description" contentClassName="grid-cols-1">
+              <FormField
+                label="Description"
+                htmlFor="description"
+                required
+                error={errors.description?.message}
+              >
+                <Textarea
+                  id="description"
+                  placeholder="Purpose of payment…"
+                  rows={3}
+                  {...register("description")}
+                />
+              </FormField>
+            </FormSection>
+
+            <SupportingDocumentsReview
+              title="Chain supporting documents"
+              documents={supportingDocuments}
+              isLoading={loadingDocs}
+              requireReview={false}
+              viewedAttachmentIds={viewedAttachmentIds}
+              onOpen={handleOpenSupportingDoc}
+              emptyMessage="No supporting documents in the PR → payment chain yet."
             />
-          </FormField>
 
-          <FormField
-            label="Payment Date"
-            htmlFor="paymentDate"
-            required
-            error={errors.paymentDate?.message}
-          >
-            <Input id="paymentDate" type="date" {...register("paymentDate")} />
-          </FormField>
-
-          <FormField label="Reference" htmlFor="reference">
-            <Input
-              id="reference"
-              placeholder="Invoice or reference number"
-              {...register("reference")}
+            <SupportingDocumentsField
+              documentLabels={VOUCHER_DOCUMENT_LABELS}
+              stagedFiles={stagedFiles}
+              onStagedFilesChange={setStagedFiles}
+              onValidationError={setSubmitError}
+              defaultLabel="Other"
+              disabled={isSubmitting}
             />
-          </FormField>
-        </FormSection>
 
-        <FormSection title="Amount">
-          <FormField label="Currency" htmlFor="currency" required error={errors.currency?.message}>
-            <Select
-              value={watch("currency")}
-              onValueChange={(v) => setValue("currency", v, { shouldValidate: true })}
-              disabled={fromPr}
-            >
-              <SelectTrigger id="currency" disabled={fromPr}>
-                <SelectValue placeholder="Select currency" />
-              </SelectTrigger>
-              <SelectContent>
-                {CURRENCIES.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-
-          <FormField label="Amount" htmlFor="amount" required error={errors.amount?.message}>
-            <Input
-              id="amount"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              {...register("amount")}
+            <FormActions
+              submitLabel="Create Voucher"
+              submittingLabel="Creating…"
+              cancelHref={`/finance/payment-requests/${selectedPrId}`}
+              isSubmitting={isSubmitting || createVoucher.isPending}
             />
-          </FormField>
+          </>
+        )}
 
-          <FormField label="Exchange Rate" htmlFor="exchangeRate">
-            <Input
-              id="exchangeRate"
-              type="number"
-              min="0"
-              step="0.0001"
-              placeholder="1.0000"
-              {...register("exchangeRate")}
-            />
-          </FormField>
-        </FormSection>
-
-        <FormSection title="Description" contentClassName="grid-cols-1">
-          <FormField
-            label="Description"
-            htmlFor="description"
-            required
-            error={errors.description?.message}
-          >
-            <Textarea
-              id="description"
-              placeholder="Purpose of payment…"
-              rows={3}
-              {...register("description")}
-            />
-          </FormField>
-        </FormSection>
-
-        <FormActions
-          submitLabel="Create Voucher"
-          submittingLabel="Creating…"
-          cancelHref={
-            fromPr
-              ? `/finance/payment-requests/${paymentRequestId}`
-              : "/finance/payment-vouchers"
-          }
-          isSubmitting={createVoucher.isPending}
-        />
+        {!selectedPrId && (
+          <FormActions
+            submitLabel="Create Voucher"
+            submittingLabel="Creating…"
+            cancelHref="/finance/payment-vouchers"
+            isSubmitting={false}
+            submitDisabled
+          />
+        )}
       </form>
     </div>
   );

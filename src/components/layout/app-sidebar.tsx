@@ -31,18 +31,26 @@ import {
   BookOpen,
   ScrollText,
   ClipboardList,
+  Kanban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { currentUser } from "@/lib/mock-data/users";
 import { useState } from "react";
+import { useAuthStore } from "@/store/auth.store";
 
 interface NavItem {
   title: string;
   href?: string;
   icon: React.ElementType;
-  children?: { title: string; href: string; icon: React.ElementType }[];
+  permission?: string;
+  children?: {
+    title: string;
+    href: string;
+    icon: React.ElementType;
+    permission?: string;
+  }[];
 }
 
 function isChildNavActive(
@@ -66,6 +74,12 @@ function isChildNavActive(
 const navigation: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Pending Approvals", href: "/approvals", icon: ClipboardList },
+  {
+    title: "Workflow Board",
+    href: "/workflow/board",
+    icon: Kanban,
+    permission: "WORKFLOW:OVERRIDE",
+  },
   { title: "Grant Management", href: "/grants", icon: Bookmark },
   { title: "Activities", href: "/projects", icon: Activity },
   {
@@ -200,6 +214,21 @@ function NavLink({
 
 export function AppSidebar({ className }: { className?: string }) {
   const { isCollapsed, toggleCollapsed } = useSidebar();
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+
+  const visibleNav = navigation
+    .filter((item) => !item.permission || hasPermission(item.permission))
+    .map((item) =>
+      item.children
+        ? {
+            ...item,
+            children: item.children.filter(
+              (c) => !c.permission || hasPermission(c.permission),
+            ),
+          }
+        : item,
+    )
+    .filter((item) => !item.children || item.children.length > 0);
 
   return (
     <aside
@@ -234,7 +263,7 @@ export function AppSidebar({ className }: { className?: string }) {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {navigation.map((item) => (
+        {visibleNav.map((item) => (
           <NavLink key={item.title} item={item} isCollapsed={isCollapsed} />
         ))}
       </nav>
@@ -264,9 +293,24 @@ export function AppSidebar({ className }: { className?: string }) {
 }
 
 export function MobileSidebarContent() {
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+  const visibleNav = navigation
+    .filter((item) => !item.permission || hasPermission(item.permission))
+    .map((item) =>
+      item.children
+        ? {
+            ...item,
+            children: item.children.filter(
+              (c) => !c.permission || hasPermission(c.permission),
+            ),
+          }
+        : item,
+    )
+    .filter((item) => !item.children || item.children.length > 0);
+
   return (
     <nav className="space-y-1 p-3">
-      {navigation.map((item) => (
+      {visibleNav.map((item) => (
         <NavLink key={item.title} item={item} isCollapsed={false} />
       ))}
     </nav>

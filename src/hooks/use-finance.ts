@@ -2,10 +2,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as api from '@/lib/api/finance';
 
 const COA_KEY = 'chart-of-accounts';
+const COA_TREE_KEY = 'chart-of-accounts-tree';
+const TRIAL_BALANCE_KEY = 'trial-balance';
 const JE_KEY = 'journal-entries';
 const PREQ_KEY = 'payment-requests';
 const PV_KEY = 'payment-vouchers';
 const BANK_KEY = 'bank-accounts';
+const CHEQUE_KEY = 'cheques';
 const DASHBOARD_KEY = 'dashboard';
 
 // ── Chart of Accounts ────────────────────────────────────────────────────────
@@ -14,11 +17,18 @@ export function useChartOfAccounts(query = {}) {
   return useQuery({ queryKey: [COA_KEY, query], queryFn: () => api.getChartOfAccounts(query) });
 }
 
+export function useChartOfAccountsTree() {
+  return useQuery({ queryKey: [COA_TREE_KEY], queryFn: () => api.getChartOfAccountsTree() });
+}
+
 export function useCreateAccount() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (dto: Record<string, unknown>) => api.createAccount(dto),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [COA_KEY] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [COA_KEY] });
+      qc.invalidateQueries({ queryKey: [COA_TREE_KEY] });
+    },
   });
 }
 
@@ -44,15 +54,17 @@ export function usePostJournalEntry() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.postJournalEntry(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [JE_KEY] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [JE_KEY] });
+      qc.invalidateQueries({ queryKey: [TRIAL_BALANCE_KEY] });
+    },
   });
 }
 
-export function useTrialBalance(params: { fromDate: string; toDate: string; fiscalYearId?: string }) {
+export function useTrialBalance(params: { periodId?: string; grantId?: string } = {}) {
   return useQuery({
-    queryKey: ['trial-balance', params],
+    queryKey: [TRIAL_BALANCE_KEY, params],
     queryFn: () => api.getTrialBalance(params),
-    enabled: !!params.fromDate && !!params.toDate,
   });
 }
 
@@ -171,7 +183,26 @@ export function useMarkPaymentVoucherPaid() {
       qc.invalidateQueries({ queryKey: [PV_KEY, id] });
       qc.invalidateQueries({ queryKey: [PREQ_KEY] });
       qc.invalidateQueries({ queryKey: ['vendor-invoices'] });
+      qc.invalidateQueries({ queryKey: [JE_KEY] });
+      qc.invalidateQueries({ queryKey: [TRIAL_BALANCE_KEY] });
+      qc.invalidateQueries({ queryKey: [COA_TREE_KEY] });
+      qc.invalidateQueries({ queryKey: [CHEQUE_KEY] });
     },
+  });
+}
+
+// ── Cheques ──────────────────────────────────────────────────────────────────
+
+export function useCheques(query = {}) {
+  return useQuery({ queryKey: [CHEQUE_KEY, query], queryFn: () => api.getCheques(query) });
+}
+
+export function useUpdateChequeStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      api.updateChequeStatus(id, status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [CHEQUE_KEY] }),
   });
 }
 

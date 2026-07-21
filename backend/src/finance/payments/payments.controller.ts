@@ -104,6 +104,16 @@ export class PaymentsController {
     return this.svc.listPaymentRequestDocuments(id);
   }
 
+  @Get('payment-requests/:id/supporting-documents')
+  @RequirePermissions('PAYMENTS:READ')
+  @ApiOperation({
+    summary:
+      'List chain supporting documents (PR, PO, GRN, invoice, payment request) for finance approval',
+  })
+  listPaymentRequestSupportingDocuments(@Param('id') id: string) {
+    return this.svc.listPaymentRequestSupportingDocuments(id);
+  }
+
   @Delete('payment-requests/:id/documents/:attachmentId')
   @RequirePermissions('PAYMENTS:UPDATE')
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -151,6 +161,63 @@ export class PaymentsController {
     return this.svc.findOneVoucher(id, user);
   }
 
+  @Get('payment-vouchers/:id/supporting-documents')
+  @RequirePermissions('PAYMENTS:READ')
+  @ApiOperation({
+    summary:
+      'List chain supporting documents for a payment voucher (via linked payment request)',
+  })
+  listPaymentVoucherSupportingDocuments(@Param('id') id: string) {
+    return this.svc.listPaymentVoucherSupportingDocuments(id);
+  }
+
+  @Get('payment-vouchers/:id/documents')
+  @RequirePermissions('PAYMENTS:READ')
+  @ApiOperation({ summary: 'List payment voucher own documents' })
+  listPaymentVoucherDocuments(@Param('id') id: string) {
+    return this.svc.listPaymentVoucherDocuments(id);
+  }
+
+  @Post('payment-vouchers/:id/documents')
+  @RequirePermissions('PAYMENTS:UPDATE')
+  @ApiOperation({ summary: 'Upload documents to a payment voucher' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FilesInterceptor('files', 10, {
+      storage: memoryStorage(),
+      limits: { fileSize: 20 * 1024 * 1024 },
+    }),
+  )
+  uploadPaymentVoucherDocuments(
+    @Param('id') id: string,
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body('labels') labelsJson: string,
+    @CurrentUser() user: UserPayload,
+  ) {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('No files provided');
+    }
+    let labels: string[] = [];
+    try {
+      labels = labelsJson ? JSON.parse(labelsJson) : [];
+    } catch {
+      labels = [];
+    }
+    return this.svc.uploadPaymentVoucherDocuments(id, files, labels, user);
+  }
+
+  @Delete('payment-vouchers/:id/documents/:attachmentId')
+  @RequirePermissions('PAYMENTS:UPDATE')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remove a payment voucher document' })
+  deletePaymentVoucherDocument(
+    @Param('id') id: string,
+    @Param('attachmentId') attachmentId: string,
+    @CurrentUser() user: UserPayload,
+  ) {
+    return this.svc.deletePaymentVoucherDocument(id, attachmentId, user);
+  }
+
   @Post('payment-vouchers/:id/submit')
   @RequirePermissions('PAYMENTS:SUBMIT')
   submitVoucher(@Param('id') id: string, @CurrentUser() user: UserPayload) {
@@ -171,6 +238,13 @@ export class PaymentsController {
   @RequirePermissions('PAYMENTS:PAY')
   markPaid(@Param('id') id: string, @Body() dto: any, @CurrentUser() user: UserPayload) {
     return this.svc.markPaid(id, dto, user);
+  }
+
+  @Get('bank-accounts')
+  @RequirePermissions('BANK_ACCOUNTS:READ')
+  @ApiOperation({ summary: 'List active organisation bank accounts' })
+  findBankAccounts() {
+    return this.svc.findActiveBankAccounts();
   }
 
   @Get('cheques')

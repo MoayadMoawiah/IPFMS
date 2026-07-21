@@ -184,7 +184,7 @@ flowchart TD
     R --> S[PV APPROVED]
     S --> T[Cheque or Bank Transfer]
     T --> U[PV PAID - Final Payment]
-    U --> V[Journal Entry / GL - planned]
+    U --> V[Journal Entry / GL - auto on Mark paid]
 ```
 
 ---

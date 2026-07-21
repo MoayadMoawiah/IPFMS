@@ -43,18 +43,39 @@ function SignOffRow({
   );
 }
 
+export type OfficialSignOffTitles = {
+  requestedBy?: string;
+  checkedBy?: string;
+  approvedBy?: string;
+};
+
 interface OfficialSignOffBlockProps {
   slots: OfficialSignOffSlots;
+  titles?: OfficialSignOffTitles;
   className?: string;
 }
 
 /** Requested by / Checked by / Approved by — matches Gaderon paper forms. */
-export function OfficialSignOffBlock({ slots, className }: OfficialSignOffBlockProps) {
+export function OfficialSignOffBlock({
+  slots,
+  titles,
+  className,
+}: OfficialSignOffBlockProps) {
   return (
     <div className={cn("print-sign-off space-y-3", className)}>
-      <SignOffRow title="Requested by:" person={slots.requestedBy} dateLabel="Dated" />
-      <SignOffRow title="Checked by:" person={slots.checkedBy} />
-      <SignOffRow title="Approved by:" person={slots.approvedBy} />
+      <SignOffRow
+        title={titles?.requestedBy ?? "Requested by:"}
+        person={slots.requestedBy}
+        dateLabel="Dated"
+      />
+      <SignOffRow
+        title={titles?.checkedBy ?? "Checked by:"}
+        person={slots.checkedBy}
+      />
+      <SignOffRow
+        title={titles?.approvedBy ?? "Approved by:"}
+        person={slots.approvedBy}
+      />
     </div>
   );
 }

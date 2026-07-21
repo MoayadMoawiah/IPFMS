@@ -28,6 +28,9 @@ const statusConfig: Record<
   processing: { label: "Processing", variant: "warning" },
   failed: { label: "Failed", variant: "destructive" },
   cleared: { label: "Cleared", variant: "success" },
+  presented: { label: "Presented", variant: "warning" },
+  bounced: { label: "Bounced", variant: "destructive" },
+  voided: { label: "Voided", variant: "muted" },
   inactive: { label: "Inactive", variant: "muted" },
 };
 

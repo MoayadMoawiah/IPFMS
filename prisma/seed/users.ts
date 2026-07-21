@@ -196,6 +196,14 @@ const PERMISSIONS = [
   { module: 'PAYMENTS', action: 'APPROVE', resource: null },
   { module: 'PAYMENTS', action: 'PAY', resource: null },
 
+  // ── CHEQUES ──────────────────────────────────────────
+  { module: 'CHEQUES', action: 'READ', resource: null },
+  { module: 'CHEQUES', action: 'UPDATE', resource: null },
+
+  // ── BANK_TRANSFERS ───────────────────────────────────
+  { module: 'BANK_TRANSFERS', action: 'READ', resource: null },
+  { module: 'BANK_TRANSFERS', action: 'UPDATE', resource: null },
+
   // ── CHART_OF_ACCOUNTS ────────────────────────────────
   { module: 'CHART_OF_ACCOUNTS', action: 'CREATE', resource: null },
   { module: 'CHART_OF_ACCOUNTS', action: 'READ', resource: null },
@@ -232,6 +240,7 @@ const PERMISSIONS = [
   { module: 'WORKFLOW', action: 'APPROVE', resource: null },
   { module: 'WORKFLOW', action: 'CONFIGURE', resource: null },
   { module: 'WORKFLOW', action: 'DELEGATE', resource: null },
+  { module: 'WORKFLOW', action: 'OVERRIDE', resource: null },
 
   // ── USERS ────────────────────────────────────────────
   { module: 'USERS', action: 'CREATE', resource: null },
@@ -278,7 +287,10 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'CONTRACTS:READ', 'CONTRACTS:APPROVE',
     'RFQ:READ',
     'FINANCE:READ', 'FINANCE:APPROVE', 'FINANCE:EXPORT',
-    'PAYMENTS:READ', 'PAYMENTS:APPROVE', 'PAYMENTS:PAY',
+    // Approve/authorize only — Mark paid is finance execution (PAYMENTS:PAY)
+    'PAYMENTS:READ', 'PAYMENTS:APPROVE',
+    'CHEQUES:READ',
+    'BANK_TRANSFERS:READ',
     'CHART_OF_ACCOUNTS:READ',
     'JOURNAL_ENTRIES:READ',
     'BANK_ACCOUNTS:READ',
@@ -303,6 +315,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'RFQ:READ',
     'FINANCE:CREATE', 'FINANCE:READ', 'FINANCE:UPDATE', 'FINANCE:APPROVE', 'FINANCE:POST', 'FINANCE:EXPORT',
     'PAYMENTS:CREATE', 'PAYMENTS:READ', 'PAYMENTS:UPDATE', 'PAYMENTS:SUBMIT', 'PAYMENTS:APPROVE', 'PAYMENTS:PAY',
+    'CHEQUES:READ', 'CHEQUES:UPDATE',
+    'BANK_TRANSFERS:READ', 'BANK_TRANSFERS:UPDATE',
     'CHART_OF_ACCOUNTS:CREATE', 'CHART_OF_ACCOUNTS:READ', 'CHART_OF_ACCOUNTS:UPDATE',
     'JOURNAL_ENTRIES:CREATE', 'JOURNAL_ENTRIES:READ', 'JOURNAL_ENTRIES:POST', 'JOURNAL_ENTRIES:REVERSE',
     'BANK_ACCOUNTS:CREATE', 'BANK_ACCOUNTS:READ', 'BANK_ACCOUNTS:RECONCILE',
@@ -322,7 +336,9 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'RFQ:READ',
     'INVOICES:READ',
     'FINANCE:CREATE', 'FINANCE:READ', 'FINANCE:UPDATE',
-    'PAYMENTS:CREATE', 'PAYMENTS:READ', 'PAYMENTS:UPDATE', 'PAYMENTS:SUBMIT',
+    'PAYMENTS:CREATE', 'PAYMENTS:READ', 'PAYMENTS:UPDATE', 'PAYMENTS:SUBMIT', 'PAYMENTS:PAY',
+    'CHEQUES:READ', 'CHEQUES:UPDATE',
+    'BANK_TRANSFERS:READ', 'BANK_TRANSFERS:UPDATE',
     'CHART_OF_ACCOUNTS:READ',
     'JOURNAL_ENTRIES:CREATE', 'JOURNAL_ENTRIES:READ',
     'WORKFLOW:READ', 'WORKFLOW:APPROVE',

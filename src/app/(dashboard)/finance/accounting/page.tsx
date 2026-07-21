@@ -14,26 +14,29 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { LoadingSkeleton } from "@/components/shared/loading-skeleton";
-import { useJournalEntries } from "@/hooks/use-finance";
+import { useJournalEntries, useTrialBalance } from "@/hooks/use-finance";
 import { getPaginatedItems } from "@/lib/api/pagination";
 import { mapJournalEntryRow } from "@/lib/mappers/api-list-mappers";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
 export default function AccountingPage() {
   const { data, isLoading, isError } = useJournalEntries({ limit: 20 });
+  const { data: trialBalance, isLoading: tbLoading } = useTrialBalance();
+
   const entries = getPaginatedItems(data).map((je) =>
     mapJournalEntryRow(je as Record<string, unknown>)
   );
+  const totals = trialBalance?.totals;
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
-        title="General Ledger"
-        description="Journal entries, trial balance, and accounting records"
+        title="Accounting"
+        description="Journal entries and trial balance from posted transactions"
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Finance" },
-          { label: "General Ledger" },
+          { label: "Accounting" },
         ]}
         actions={
           <Button>
@@ -42,6 +45,55 @@ export default function AccountingPage() {
           </Button>
         }
       />
+
+      {tbLoading && (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <LoadingSkeleton variant="cards" />
+        </div>
+      )}
+
+      {totals && (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Posted Debits
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-semibold">{formatCurrency(totals.totalDebit)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Posted Credits
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-semibold">{formatCurrency(totals.totalCredit)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Trial Balance
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p
+                className={
+                  totals.isBalanced
+                    ? "text-2xl font-semibold text-green-600"
+                    : "text-2xl font-semibold text-destructive"
+                }
+              >
+                {totals.isBalanced ? "Balanced" : "Out of balance"}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <Card>
         <CardHeader>

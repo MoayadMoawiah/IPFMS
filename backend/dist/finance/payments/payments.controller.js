@@ -57,6 +57,9 @@ let PaymentsController = class PaymentsController {
     listPaymentRequestDocuments(id) {
         return this.svc.listPaymentRequestDocuments(id);
     }
+    listPaymentRequestSupportingDocuments(id) {
+        return this.svc.listPaymentRequestSupportingDocuments(id);
+    }
     deletePaymentRequestDocument(id, attachmentId, user) {
         return this.svc.deletePaymentRequestDocument(id, attachmentId, user);
     }
@@ -75,6 +78,28 @@ let PaymentsController = class PaymentsController {
     findOneVoucher(id, user) {
         return this.svc.findOneVoucher(id, user);
     }
+    listPaymentVoucherSupportingDocuments(id) {
+        return this.svc.listPaymentVoucherSupportingDocuments(id);
+    }
+    listPaymentVoucherDocuments(id) {
+        return this.svc.listPaymentVoucherDocuments(id);
+    }
+    uploadPaymentVoucherDocuments(id, files, labelsJson, user) {
+        if (!files || files.length === 0) {
+            throw new common_1.BadRequestException('No files provided');
+        }
+        let labels = [];
+        try {
+            labels = labelsJson ? JSON.parse(labelsJson) : [];
+        }
+        catch {
+            labels = [];
+        }
+        return this.svc.uploadPaymentVoucherDocuments(id, files, labels, user);
+    }
+    deletePaymentVoucherDocument(id, attachmentId, user) {
+        return this.svc.deletePaymentVoucherDocument(id, attachmentId, user);
+    }
     submitVoucher(id, user) {
         return this.svc.submitVoucher(id, user);
     }
@@ -83,6 +108,9 @@ let PaymentsController = class PaymentsController {
     }
     markPaid(id, dto, user) {
         return this.svc.markPaid(id, dto, user);
+    }
+    findBankAccounts() {
+        return this.svc.findActiveBankAccounts();
     }
     findCheques(q) {
         return this.svc.findAllCheques(q);
@@ -170,6 +198,17 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], PaymentsController.prototype, "listPaymentRequestDocuments", null);
 __decorate([
+    (0, common_1.Get)('payment-requests/:id/supporting-documents'),
+    (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:READ'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'List chain supporting documents (PR, PO, GRN, invoice, payment request) for finance approval',
+    }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "listPaymentRequestSupportingDocuments", null);
+__decorate([
     (0, common_1.Delete)('payment-requests/:id/documents/:attachmentId'),
     (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:UPDATE'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
@@ -227,6 +266,55 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], PaymentsController.prototype, "findOneVoucher", null);
 __decorate([
+    (0, common_1.Get)('payment-vouchers/:id/supporting-documents'),
+    (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:READ'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'List chain supporting documents for a payment voucher (via linked payment request)',
+    }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "listPaymentVoucherSupportingDocuments", null);
+__decorate([
+    (0, common_1.Get)('payment-vouchers/:id/documents'),
+    (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:READ'),
+    (0, swagger_1.ApiOperation)({ summary: 'List payment voucher own documents' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "listPaymentVoucherDocuments", null);
+__decorate([
+    (0, common_1.Post)('payment-vouchers/:id/documents'),
+    (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:UPDATE'),
+    (0, swagger_1.ApiOperation)({ summary: 'Upload documents to a payment voucher' }),
+    (0, swagger_1.ApiConsumes)('multipart/form-data'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('files', 10, {
+        storage: (0, multer_1.memoryStorage)(),
+        limits: { fileSize: 20 * 1024 * 1024 },
+    })),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.UploadedFiles)()),
+    __param(2, (0, common_1.Body)('labels')),
+    __param(3, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Array, String, Object]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "uploadPaymentVoucherDocuments", null);
+__decorate([
+    (0, common_1.Delete)('payment-vouchers/:id/documents/:attachmentId'),
+    (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:UPDATE'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Remove a payment voucher document' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Param)('attachmentId')),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "deletePaymentVoucherDocument", null);
+__decorate([
     (0, common_1.Post)('payment-vouchers/:id/submit'),
     (0, permissions_decorator_1.RequirePermissions)('PAYMENTS:SUBMIT'),
     __param(0, (0, common_1.Param)('id')),
@@ -255,6 +343,14 @@ __decorate([
     __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", void 0)
 ], PaymentsController.prototype, "markPaid", null);
+__decorate([
+    (0, common_1.Get)('bank-accounts'),
+    (0, permissions_decorator_1.RequirePermissions)('BANK_ACCOUNTS:READ'),
+    (0, swagger_1.ApiOperation)({ summary: 'List active organisation bank accounts' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "findBankAccounts", null);
 __decorate([
     (0, common_1.Get)('cheques'),
     (0, permissions_decorator_1.RequirePermissions)('CHEQUES:READ'),

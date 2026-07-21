@@ -18,6 +18,9 @@ const audit_service_1 = require("../../audit/audit.service");
 const minio_service_1 = require("../../uploads/minio.service");
 const client_1 = require("@prisma/client");
 const pagination_dto_1 = require("../../common/dto/pagination.dto");
+const DEFAULT_AP_ACCOUNT_CODE = '2101';
+const DEFAULT_BANK_ACCOUNT_CODE = '1102';
+const DEFAULT_CASH_ACCOUNT_CODE = '1101';
 const OPEN_PR_STATUSES = [
     client_1.DocumentStatus.DRAFT,
     client_1.DocumentStatus.SUBMITTED,
@@ -35,6 +38,11 @@ const ALLOWED_PR_METHODS = new Set([
 ]);
 const SIGNED_CASH_RECEIPT_LABEL = 'SIGNED_CASH_RECEIPT';
 const PR_DOCUMENT_TYPE = 'PAYMENT_REQUEST';
+const PV_DOCUMENT_TYPE = 'PAYMENT_VOUCHER';
+const PV_EDITABLE_STATUSES = [
+    client_1.DocumentStatus.DRAFT,
+    client_1.DocumentStatus.RETURNED,
+];
 const ALLOWED_MIME_TYPES = new Set([
     'application/pdf',
     'application/msword',
@@ -102,10 +110,22 @@ let PaymentsService = class PaymentsService {
     }
     async findAllPaymentRequests(query) {
         const { page, limit } = (0, pagination_dto_1.parsePagination)(query);
-        const { search, status, grantId } = query;
+        const { search, status, grantId, availableForVoucher } = query;
+        const forVoucher = availableForVoucher === true ||
+            availableForVoucher === 'true' ||
+            availableForVoucher === '1';
         const where = {
             deletedAt: null,
-            ...(status && { status }),
+            ...(forVoucher
+                ? {
+                    status: client_1.DocumentStatus.APPROVED,
+                    paymentVouchers: {
+                        none: { deletedAt: null },
+                    },
+                }
+                : {
+                    ...(status && { status }),
+                }),
             ...(grantId && { grantId }),
             ...(search && {
                 OR: [
@@ -128,6 +148,10 @@ let PaymentsService = class PaymentsService {
                             status: true,
                             vendor: { select: { id: true, name: true } },
                         },
+                    },
+                    paymentVouchers: {
+                        where: { deletedAt: null },
+                        select: { id: true, serialNumber: true, status: true },
                     },
                 },
                 skip: (page - 1) * limit,
@@ -155,7 +179,7 @@ let PaymentsService = class PaymentsService {
                                 },
                             },
                         },
-                        po: { select: { id: true, serialNumber: true } },
+                        po: { select: { id: true, serialNumber: true, prId: true } },
                         grn: { select: { id: true, serialNumber: true } },
                     },
                 },
@@ -428,6 +452,232 @@ let PaymentsService = class PaymentsService {
             orderBy: { createdAt: 'desc' },
         });
     }
+    async listPaymentRequestSupportingDocuments(requestId) {
+        const request = await this.prisma.paymentRequest.findFirst({
+            where: { id: requestId, deletedAt: null },
+            select: {
+                id: true,
+                invoice: {
+                    select: {
+                        id: true,
+                        serialNumber: true,
+                        invoiceNumber: true,
+                        fileUrl: true,
+                        poId: true,
+                        grnId: true,
+                        po: { select: { id: true, prId: true } },
+                    },
+                },
+            },
+        });
+        if (!request)
+            throw new common_1.NotFoundException(`Payment request ${requestId} not found`);
+        const orFilters = [
+            { documentType: PR_DOCUMENT_TYPE, documentId: requestId },
+        ];
+        const poId = request.invoice?.poId ?? request.invoice?.po?.id ?? null;
+        const prId = request.invoice?.po?.prId ?? null;
+        const grnId = request.invoice?.grnId ?? null;
+        if (prId)
+            orFilters.push({ documentType: 'PurchaseRequisition', documentId: prId });
+        if (poId)
+            orFilters.push({ documentType: 'PurchaseOrder', documentId: poId });
+        if (grnId)
+            orFilters.push({ documentType: 'GoodsReceipt', documentId: grnId });
+        const attachments = await this.prisma.documentAttachment.findMany({
+            where: {
+                deletedAt: null,
+                OR: orFilters,
+            },
+            include: {
+                uploadedBy: { select: { id: true, firstName: true, lastName: true } },
+            },
+            orderBy: { createdAt: 'asc' },
+        });
+        const sourceFor = (documentType) => {
+            if (documentType === 'PurchaseRequisition')
+                return 'pr';
+            if (documentType === 'PurchaseOrder')
+                return 'po';
+            if (documentType === 'GoodsReceipt')
+                return 'grn';
+            return 'payment_request';
+        };
+        const rows = attachments.map((a) => ({
+            id: a.id,
+            documentType: a.documentType,
+            documentId: a.documentId,
+            fileName: a.fileName,
+            originalName: a.originalName,
+            fileSize: a.fileSize,
+            mimeType: a.mimeType,
+            fileUrl: a.fileUrl,
+            storageKey: a.storageKey,
+            uploadedById: a.uploadedById,
+            createdAt: a.createdAt,
+            deletedAt: a.deletedAt,
+            uploadedBy: a.uploadedBy,
+            source: sourceFor(a.documentType),
+        }));
+        const invoice = request.invoice;
+        if (invoice?.fileUrl) {
+            rows.push({
+                id: `invoice-file:${invoice.id}`,
+                documentType: 'VendorInvoice',
+                documentId: invoice.id,
+                fileName: 'Final invoice',
+                originalName: invoice.invoiceNumber || invoice.serialNumber || 'Vendor invoice',
+                fileSize: 0,
+                mimeType: 'application/pdf',
+                fileUrl: invoice.fileUrl,
+                storageKey: '',
+                uploadedById: '',
+                createdAt: new Date(0),
+                deletedAt: null,
+                uploadedBy: null,
+                source: 'invoice',
+            });
+        }
+        const sourceOrder = {
+            pr: 0,
+            po: 1,
+            grn: 2,
+            invoice: 3,
+            payment_request: 4,
+            payment_voucher: 5,
+        };
+        rows.sort((a, b) => sourceOrder[a.source] - sourceOrder[b.source]);
+        return rows;
+    }
+    async listPaymentVoucherDocuments(voucherId) {
+        await this.findOneVoucher(voucherId);
+        return this.prisma.documentAttachment.findMany({
+            where: {
+                documentType: PV_DOCUMENT_TYPE,
+                documentId: voucherId,
+                deletedAt: null,
+            },
+            include: {
+                uploadedBy: { select: { id: true, firstName: true, lastName: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+    }
+    async uploadPaymentVoucherDocuments(voucherId, files, labels, user) {
+        const voucher = await this.findOneVoucher(voucherId);
+        if (!PV_EDITABLE_STATUSES.includes(voucher.status)) {
+            throw new common_1.BadRequestException('Documents can only be added to DRAFT or RETURNED payment vouchers');
+        }
+        const results = [];
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const label = labels[i] ?? 'Other';
+            if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
+                throw new common_1.BadRequestException(`File type '${file.mimetype}' is not allowed for '${file.originalname}'`);
+            }
+            if (file.size > MAX_FILE_SIZE_BYTES) {
+                throw new common_1.BadRequestException(`File '${file.originalname}' exceeds the 20 MB size limit`);
+            }
+            const timestamp = Date.now();
+            const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const storageKey = `payment-vouchers/${voucherId}/${timestamp}-${safeName}`;
+            await this.minioSvc.uploadFile(file.buffer, storageKey, file.mimetype);
+            const fileUrl = this.minioSvc.buildPublicUrl(storageKey);
+            const attachment = await this.prisma.documentAttachment.create({
+                data: {
+                    documentType: PV_DOCUMENT_TYPE,
+                    documentId: voucherId,
+                    fileName: label,
+                    originalName: file.originalname,
+                    fileSize: file.size,
+                    mimeType: file.mimetype,
+                    fileUrl,
+                    storageKey,
+                    uploadedById: user.id,
+                },
+                include: {
+                    uploadedBy: { select: { id: true, firstName: true, lastName: true } },
+                },
+            });
+            results.push(attachment);
+        }
+        await this.auditSvc.log({
+            userId: user.id,
+            action: 'CREATE',
+            module: 'PAYMENTS',
+            resource: 'DocumentAttachment',
+            resourceId: voucherId,
+            newValues: { count: results.length, documentType: PV_DOCUMENT_TYPE },
+        });
+        return results;
+    }
+    async deletePaymentVoucherDocument(voucherId, attachmentId, user) {
+        const voucher = await this.findOneVoucher(voucherId);
+        if (!PV_EDITABLE_STATUSES.includes(voucher.status)) {
+            throw new common_1.BadRequestException('Documents can only be removed from DRAFT or RETURNED payment vouchers');
+        }
+        const attachment = await this.prisma.documentAttachment.findFirst({
+            where: {
+                id: attachmentId,
+                documentType: PV_DOCUMENT_TYPE,
+                documentId: voucherId,
+                deletedAt: null,
+            },
+        });
+        if (!attachment)
+            throw new common_1.NotFoundException('Document not found');
+        await this.prisma.documentAttachment.update({
+            where: { id: attachmentId },
+            data: { deletedAt: new Date() },
+        });
+        await this.auditSvc.log({
+            userId: user.id,
+            action: 'DELETE',
+            module: 'PAYMENTS',
+            resource: 'DocumentAttachment',
+            resourceId: attachmentId,
+            oldValues: { voucherId, fileName: attachment.fileName },
+        });
+    }
+    async listPaymentVoucherSupportingDocuments(voucherId) {
+        const voucher = await this.prisma.paymentVoucher.findFirst({
+            where: { id: voucherId, deletedAt: null },
+            select: { id: true, paymentRequestId: true },
+        });
+        if (!voucher)
+            throw new common_1.NotFoundException(`Payment Voucher ${voucherId} not found`);
+        const chain = voucher.paymentRequestId
+            ? await this.listPaymentRequestSupportingDocuments(voucher.paymentRequestId)
+            : [];
+        const voucherDocs = await this.prisma.documentAttachment.findMany({
+            where: {
+                documentType: PV_DOCUMENT_TYPE,
+                documentId: voucherId,
+                deletedAt: null,
+            },
+            include: {
+                uploadedBy: { select: { id: true, firstName: true, lastName: true } },
+            },
+            orderBy: { createdAt: 'asc' },
+        });
+        const pvRows = voucherDocs.map((a) => ({
+            id: a.id,
+            documentType: a.documentType,
+            documentId: a.documentId,
+            fileName: a.fileName,
+            originalName: a.originalName,
+            fileSize: a.fileSize,
+            mimeType: a.mimeType,
+            fileUrl: a.fileUrl,
+            storageKey: a.storageKey,
+            uploadedById: a.uploadedById,
+            createdAt: a.createdAt,
+            deletedAt: a.deletedAt,
+            uploadedBy: a.uploadedBy,
+            source: 'payment_voucher',
+        }));
+        return [...chain, ...pvRows];
+    }
     async deletePaymentRequestDocument(requestId, attachmentId, user) {
         const request = await this.findOnePaymentRequest(requestId);
         if (!PR_EDITABLE_STATUSES.includes(request.status)) {
@@ -496,13 +746,36 @@ let PaymentsService = class PaymentsService {
             where: { id, deletedAt: null },
             include: {
                 paymentRequest: {
-                    include: {
+                    select: {
+                        id: true,
+                        serialNumber: true,
+                        invoiceId: true,
+                        paymentMethod: true,
+                        methodDetails: true,
+                        bankAccountId: true,
+                        totalAmount: true,
+                        currency: true,
+                        bankAccount: {
+                            select: {
+                                id: true,
+                                accountName: true,
+                                bankName: true,
+                                accountNumber: true,
+                            },
+                        },
                         invoice: {
-                            include: { vendor: { select: { id: true, name: true } } },
+                            select: {
+                                id: true,
+                                serialNumber: true,
+                                invoiceNumber: true,
+                                vendor: { select: { id: true, name: true } },
+                                po: { select: { id: true, serialNumber: true } },
+                                grn: { select: { id: true, serialNumber: true } },
+                            },
                         },
                     },
                 },
-                grant: true,
+                grant: { select: { id: true, code: true, name: true } },
                 payments: {
                     include: {
                         cheques: true,
@@ -537,60 +810,69 @@ let PaymentsService = class PaymentsService {
         const approvalContext = user
             ? await this.workflowSvc.buildApprovalContext(voucher.workflow, user.id, user.roles)
             : await this.workflowSvc.buildApprovalContext(voucher.workflow);
-        return { ...voucher, createdBy, approvalContext };
+        const jeIds = voucher.payments
+            .map((p) => p.journalEntryId)
+            .filter((jid) => !!jid);
+        const journalEntries = jeIds.length > 0
+            ? await this.prisma.journalEntry.findMany({
+                where: { id: { in: jeIds } },
+                select: { id: true, serialNumber: true, status: true, isPosted: true },
+            })
+            : [];
+        const jeById = new Map(journalEntries.map((je) => [je.id, je]));
+        const payments = voucher.payments.map((p) => ({
+            ...p,
+            journalEntry: p.journalEntryId ? jeById.get(p.journalEntryId) ?? null : null,
+        }));
+        return { ...voucher, payments, createdBy, approvalContext };
     }
     async createVoucher(dto, user) {
-        let grantId = dto.grantId;
-        let payeeType = dto.payeeType || 'VENDOR';
-        let payeeId = dto.payeeId;
-        let payeeName = dto.payeeName;
-        let currency = dto.currency || 'USD';
+        const paymentRequestId = dto.paymentRequestId?.trim();
+        if (!paymentRequestId) {
+            throw new common_1.BadRequestException('paymentRequestId is required — every payment voucher must reference a payment request');
+        }
         let amount = dto.amount !== undefined ? Number(dto.amount) : undefined;
-        let paymentRequestId = dto.paymentRequestId;
         let description = dto.description;
         let reference = dto.reference;
-        if (paymentRequestId) {
-            const pr = await this.prisma.paymentRequest.findFirst({
-                where: { id: paymentRequestId, deletedAt: null },
-                include: {
-                    invoice: { include: { vendor: true } },
-                    grant: true,
-                    paymentVouchers: {
-                        where: { deletedAt: null, NOT: { status: 'PAID' } },
-                        select: { id: true, serialNumber: true, status: true },
-                    },
+        const pr = await this.prisma.paymentRequest.findFirst({
+            where: { id: paymentRequestId, deletedAt: null },
+            include: {
+                invoice: { include: { vendor: true } },
+                grant: true,
+                paymentVouchers: {
+                    where: { deletedAt: null },
+                    select: { id: true, serialNumber: true, status: true },
+                    orderBy: { createdAt: 'desc' },
                 },
-            });
-            if (!pr)
-                throw new common_1.NotFoundException('Payment request not found');
-            if (pr.status !== client_1.DocumentStatus.APPROVED) {
-                throw new common_1.BadRequestException('Payment request must be APPROVED to create a voucher');
-            }
-            if (pr.paymentVouchers.length > 0) {
-                throw new common_1.BadRequestException(`An open payment voucher already exists for this request (${pr.paymentVouchers[0].serialNumber})`);
-            }
-            grantId = pr.grantId;
-            payeeType = 'VENDOR';
-            payeeId = pr.invoice.vendorId;
-            payeeName = pr.invoice.vendor?.name || payeeName;
-            currency = pr.currency;
-            const prAmount = Number(pr.totalAmount);
-            if (amount === undefined || Number.isNaN(amount)) {
-                amount = prAmount;
-            }
-            else if (amount <= 0) {
-                throw new common_1.BadRequestException('Amount must be a positive number');
-            }
-            else if (amount > prAmount + 1e-9) {
-                throw new common_1.BadRequestException(`Amount cannot exceed payment request total (${prAmount})`);
-            }
-            description =
-                description ||
-                    `Payment for invoice ${pr.invoice.invoiceNumber} (${pr.invoice.serialNumber})`;
-            reference = reference || pr.serialNumber;
+            },
+        });
+        if (!pr)
+            throw new common_1.NotFoundException('Payment request not found');
+        if (pr.status !== client_1.DocumentStatus.APPROVED) {
+            throw new common_1.BadRequestException('Payment request must be APPROVED to create a voucher');
         }
-        if (!grantId)
-            throw new common_1.BadRequestException('grantId is required');
+        if (pr.paymentVouchers.length > 0) {
+            throw new common_1.BadRequestException(`A payment voucher already exists for this request (${pr.paymentVouchers[0].serialNumber}). Only one voucher is allowed per payment request.`);
+        }
+        const grantId = pr.grantId;
+        const payeeType = 'VENDOR';
+        const payeeId = pr.invoice.vendorId;
+        const payeeName = pr.invoice.vendor?.name || dto.payeeName;
+        const currency = pr.currency;
+        const prAmount = Number(pr.totalAmount);
+        if (amount === undefined || Number.isNaN(amount)) {
+            amount = prAmount;
+        }
+        else if (amount <= 0) {
+            throw new common_1.BadRequestException('Amount must be a positive number');
+        }
+        else if (amount > prAmount + 1e-9) {
+            throw new common_1.BadRequestException(`Amount cannot exceed payment request total (${prAmount})`);
+        }
+        description =
+            description ||
+                `Payment for invoice ${pr.invoice.invoiceNumber} (${pr.invoice.serialNumber})`;
+        reference = reference || pr.serialNumber;
         if (!payeeName)
             throw new common_1.BadRequestException('payeeName is required');
         if (amount === undefined || !Number.isFinite(amount) || amount <= 0) {
@@ -608,7 +890,7 @@ let PaymentsService = class PaymentsService {
         const voucher = await this.prisma.paymentVoucher.create({
             data: {
                 serialNumber,
-                paymentRequestId: paymentRequestId || null,
+                paymentRequestId,
                 grantId,
                 payeeType,
                 payeeId: payeeId || null,
@@ -654,101 +936,361 @@ let PaymentsService = class PaymentsService {
         }
         return instance;
     }
+    async findActiveBankAccounts() {
+        return this.prisma.bankAccount.findMany({
+            where: { isActive: true },
+            select: {
+                id: true,
+                accountName: true,
+                bankName: true,
+                accountNumber: true,
+                currency: true,
+                currentBalance: true,
+            },
+            orderBy: [{ bankName: 'asc' }, { accountName: 'asc' }],
+        });
+    }
     async markPaid(id, dto, user) {
         const voucher = await this.findOneVoucher(id);
-        if (voucher.status !== client_1.DocumentStatus.APPROVED)
+        if (voucher.status !== client_1.DocumentStatus.APPROVED) {
             throw new common_1.BadRequestException('Voucher must be APPROVED to mark as paid');
-        if (!dto.paymentMethod)
-            throw new common_1.BadRequestException('paymentMethod is required');
+        }
+        if (voucher.payments?.some((p) => p.status === 'COMPLETED')) {
+            throw new common_1.BadRequestException('Voucher already has a completed payment');
+        }
         if (!dto.paymentDate)
             throw new common_1.BadRequestException('paymentDate is required');
+        const pr = voucher.paymentRequest;
+        const paymentMethod = String(dto.paymentMethod || pr?.paymentMethod || '').toUpperCase();
+        if (!paymentMethod) {
+            throw new common_1.BadRequestException('paymentMethod is required');
+        }
+        const methodDetails = pr?.methodDetails && typeof pr.methodDetails === 'object'
+            ? pr.methodDetails
+            : {};
+        const paymentDate = new Date(dto.paymentDate);
+        let chequeData = dto.chequeData;
+        let transferData = dto.transferData;
+        if (paymentMethod === client_1.PaymentMethod.CHEQUE && !chequeData) {
+            const chequeNumber = String(methodDetails.chequeNumber || '').trim();
+            if (chequeNumber) {
+                chequeData = {
+                    chequeNumber,
+                    chequeDate: methodDetails.chequeDate || dto.paymentDate,
+                    bankAccountId: dto.bankAccountId || pr?.bankAccountId || null,
+                };
+            }
+        }
+        if (paymentMethod === client_1.PaymentMethod.BANK_TRANSFER && !transferData) {
+            const toBankAccount = String(methodDetails.accountNumber || methodDetails.iban || '').trim();
+            const toBankName = String(methodDetails.bankName || '').trim();
+            if (toBankAccount || toBankName) {
+                transferData = {
+                    fromBankAccountId: dto.bankAccountId || pr?.bankAccountId || null,
+                    toBankAccount: toBankAccount || '—',
+                    toBankName: toBankName || '—',
+                };
+            }
+        }
+        const bankAccountId = dto.bankAccountId ||
+            chequeData?.bankAccountId ||
+            transferData?.fromBankAccountId ||
+            pr?.bankAccountId ||
+            null;
+        const needsOrgBank = paymentMethod === client_1.PaymentMethod.CHEQUE ||
+            paymentMethod === client_1.PaymentMethod.BANK_TRANSFER;
+        if (needsOrgBank && !bankAccountId) {
+            throw new common_1.BadRequestException('Select the organisation bank account to pay from');
+        }
+        await this.resolveLeafAccountByCode(DEFAULT_AP_ACCOUNT_CODE);
+        await this.resolveCreditGlAccountId(paymentMethod, bankAccountId);
+        await this.resolveOpenPeriod(paymentDate);
         const payment = await this.prisma.payment.create({
             data: {
                 paymentVoucherId: id,
-                paymentMethod: dto.paymentMethod,
-                paymentDate: new Date(dto.paymentDate),
+                paymentMethod: paymentMethod,
+                paymentDate,
                 amount: voucher.amount,
                 currency: voucher.currency,
                 exchangeRate: voucher.exchangeRate,
                 baseAmount: voucher.baseAmount,
                 reference: dto.reference,
-                bankAccountId: dto.bankAccountId,
+                bankAccountId,
                 status: 'COMPLETED',
                 createdById: user.id,
             },
         });
-        if (dto.paymentMethod === 'CHEQUE' && dto.chequeData) {
-            const chequeSerial = await this.serialSvc.next(voucher.grant?.code || 'SYS', 'CHQ');
-            await this.prisma.cheque.create({
-                data: {
-                    paymentId: payment.id,
-                    serialNumber: chequeSerial,
-                    chequeNumber: dto.chequeData.chequeNumber,
-                    bankAccountId: dto.chequeData.bankAccountId,
-                    payeeName: voucher.payeeName,
-                    amount: voucher.amount,
-                    currency: voucher.currency,
-                    chequeDate: new Date(dto.chequeData.chequeDate || dto.paymentDate),
-                    status: 'ISSUED',
-                    issuedAt: new Date(),
-                },
-            });
-        }
-        else if (dto.paymentMethod === 'BANK_TRANSFER' && dto.transferData) {
-            const transferSerial = await this.serialSvc.next(voucher.grant?.code || 'SYS', 'BT');
-            await this.prisma.bankTransfer.create({
-                data: {
-                    paymentId: payment.id,
-                    serialNumber: transferSerial,
-                    fromBankAccountId: dto.transferData.fromBankAccountId,
-                    toBankAccount: dto.transferData.toBankAccount,
-                    toBankName: dto.transferData.toBankName,
-                    toAccountName: voucher.payeeName,
-                    currency: voucher.currency,
-                    amount: voucher.amount,
-                    exchangeRate: voucher.exchangeRate,
-                    baseAmount: voucher.baseAmount,
-                    transferDate: new Date(dto.paymentDate),
-                    reference: dto.reference,
-                    status: 'COMPLETED',
-                    completedAt: new Date(),
-                },
-            });
-        }
-        await this.prisma.paymentVoucher.update({ where: { id }, data: { status: 'PAID' } });
-        const invoiceId = voucher.paymentRequest?.invoiceId ?? voucher.paymentRequest?.invoice?.id;
-        if (invoiceId) {
-            const invoice = await this.prisma.vendorInvoice.findUnique({ where: { id: invoiceId } });
-            if (invoice) {
-                const newPaid = Number(invoice.paidAmount) + Number(voucher.amount);
-                const fullyPaid = newPaid >= Number(invoice.totalAmount) - 1e-9;
-                await this.prisma.vendorInvoice.update({
-                    where: { id: invoiceId },
+        try {
+            if (paymentMethod === client_1.PaymentMethod.CHEQUE && chequeData) {
+                if (!chequeData.bankAccountId && !bankAccountId) {
+                    throw new common_1.BadRequestException('bankAccountId is required when recording a cheque payment');
+                }
+                const chequeSerial = await this.serialSvc.next(voucher.grant?.code || 'SYS', 'CHQ');
+                await this.prisma.cheque.create({
                     data: {
-                        paidAmount: new client_1.Prisma.Decimal(newPaid),
-                        ...(fullyPaid ? { status: client_1.InvoiceStatus.PAID } : {}),
+                        paymentId: payment.id,
+                        serialNumber: chequeSerial,
+                        chequeNumber: String(chequeData.chequeNumber),
+                        bankAccountId: String(chequeData.bankAccountId || bankAccountId),
+                        payeeName: voucher.payeeName,
+                        amount: voucher.amount,
+                        currency: voucher.currency,
+                        chequeDate: new Date(String(chequeData.chequeDate || dto.paymentDate)),
+                        status: 'ISSUED',
+                        issuedAt: new Date(),
                     },
                 });
             }
+            else if (paymentMethod === client_1.PaymentMethod.BANK_TRANSFER && transferData) {
+                if (!transferData.fromBankAccountId && !bankAccountId) {
+                    throw new common_1.BadRequestException('fromBankAccountId is required when recording a bank transfer');
+                }
+                const transferSerial = await this.serialSvc.next(voucher.grant?.code || 'SYS', 'BT');
+                await this.prisma.bankTransfer.create({
+                    data: {
+                        paymentId: payment.id,
+                        serialNumber: transferSerial,
+                        fromBankAccountId: String(transferData.fromBankAccountId || bankAccountId),
+                        toBankAccount: String(transferData.toBankAccount || '—'),
+                        toBankName: String(transferData.toBankName || '—'),
+                        toAccountName: voucher.payeeName,
+                        currency: voucher.currency,
+                        amount: voucher.amount,
+                        exchangeRate: voucher.exchangeRate,
+                        baseAmount: voucher.baseAmount,
+                        transferDate: paymentDate,
+                        reference: dto.reference,
+                        status: 'COMPLETED',
+                        completedAt: new Date(),
+                    },
+                });
+            }
+            const journalEntry = await this.createAndPostPaymentJournal({
+                paymentId: payment.id,
+                voucher,
+                paymentMethod,
+                paymentDate,
+                bankAccountId,
+                user,
+            });
+            if (bankAccountId) {
+                await this.prisma.bankAccount.update({
+                    where: { id: bankAccountId },
+                    data: {
+                        currentBalance: {
+                            decrement: new client_1.Prisma.Decimal(Number(voucher.amount)),
+                        },
+                    },
+                });
+            }
+            await this.prisma.paymentVoucher.update({
+                where: { id },
+                data: { status: client_1.DocumentStatus.CLOSED },
+            });
+            const invoiceId = voucher.paymentRequest?.invoiceId ?? voucher.paymentRequest?.invoice?.id;
+            if (invoiceId) {
+                const invoice = await this.prisma.vendorInvoice.findUnique({ where: { id: invoiceId } });
+                if (invoice) {
+                    const newPaid = Number(invoice.paidAmount) + Number(voucher.amount);
+                    const fullyPaid = newPaid >= Number(invoice.totalAmount) - 1e-9;
+                    await this.prisma.vendorInvoice.update({
+                        where: { id: invoiceId },
+                        data: {
+                            paidAmount: new client_1.Prisma.Decimal(newPaid),
+                            ...(fullyPaid ? { status: client_1.InvoiceStatus.PAID } : {}),
+                        },
+                    });
+                }
+            }
+            await this.auditSvc.log({
+                userId: user.id,
+                action: 'UPDATE',
+                module: 'PAYMENTS',
+                resource: 'PaymentVoucher',
+                resourceId: id,
+                newValues: {
+                    status: client_1.DocumentStatus.CLOSED,
+                    paymentMethod,
+                    journalEntryId: journalEntry.id,
+                    journalSerial: journalEntry.serialNumber,
+                },
+            });
+            return {
+                ...payment,
+                journalEntryId: journalEntry.id,
+                journalEntry: {
+                    id: journalEntry.id,
+                    serialNumber: journalEntry.serialNumber,
+                    status: journalEntry.status,
+                },
+            };
         }
-        await this.auditSvc.log({
-            userId: user.id,
-            action: 'UPDATE',
-            module: 'PAYMENTS',
-            resource: 'PaymentVoucher',
-            resourceId: id,
-            newValues: { status: 'PAID', paymentMethod: dto.paymentMethod },
+        catch (err) {
+            await this.prisma.bankTransfer.deleteMany({ where: { paymentId: payment.id } });
+            await this.prisma.cheque.deleteMany({ where: { paymentId: payment.id } });
+            await this.prisma.journalEntry.deleteMany({
+                where: { sourceType: client_1.JournalSource.PAYMENT, sourceId: payment.id },
+            });
+            await this.prisma.payment.delete({ where: { id: payment.id } });
+            throw err;
+        }
+    }
+    async resolveLeafAccountByCode(code) {
+        const account = await this.prisma.chartOfAccount.findFirst({
+            where: { code, isLeaf: true, isActive: true, deletedAt: null },
         });
-        return payment;
+        if (!account) {
+            throw new common_1.BadRequestException(`Chart of account '${code}' not found. Seed the COA or configure GL accounts.`);
+        }
+        return account;
+    }
+    async resolveCreditGlAccountId(paymentMethod, bankAccountId) {
+        if (bankAccountId) {
+            const bank = await this.prisma.bankAccount.findUnique({
+                where: { id: bankAccountId },
+                select: { id: true, glAccountId: true, accountName: true },
+            });
+            if (bank?.glAccountId)
+                return bank.glAccountId;
+        }
+        const isCash = paymentMethod === client_1.PaymentMethod.CASH ||
+            paymentMethod === client_1.PaymentMethod.PETTY_CASH;
+        const code = isCash ? DEFAULT_CASH_ACCOUNT_CODE : DEFAULT_BANK_ACCOUNT_CODE;
+        const account = await this.resolveLeafAccountByCode(code);
+        return account.id;
+    }
+    async resolveOpenPeriod(paymentDate) {
+        const period = await this.prisma.accountingPeriod.findFirst({
+            where: {
+                status: 'OPEN',
+                startDate: { lte: paymentDate },
+                endDate: { gte: paymentDate },
+            },
+            orderBy: { startDate: 'desc' },
+        });
+        if (!period) {
+            throw new common_1.BadRequestException(`No open accounting period covers ${paymentDate.toISOString().slice(0, 10)}. Open a fiscal period before marking paid.`);
+        }
+        return period;
+    }
+    async createAndPostPaymentJournal(opts) {
+        const amount = Number(opts.voucher.amount);
+        const exchangeRate = Number(opts.voucher.exchangeRate || 1);
+        if (!(amount > 0)) {
+            throw new common_1.BadRequestException('Payment amount must be positive for journal posting');
+        }
+        const apAccount = await this.resolveLeafAccountByCode(DEFAULT_AP_ACCOUNT_CODE);
+        const creditAccountId = await this.resolveCreditGlAccountId(opts.paymentMethod, opts.bankAccountId);
+        if (creditAccountId === apAccount.id) {
+            throw new common_1.BadRequestException('AP and bank/cash GL accounts resolve to the same account; check COA configuration.');
+        }
+        const period = await this.resolveOpenPeriod(opts.paymentDate);
+        const grantCode = opts.voucher.grant?.code || 'SYS';
+        const serialNumber = await this.serialSvc.next(grantCode, 'JE');
+        const description = `Payment for ${opts.voucher.serialNumber} — ${opts.voucher.payeeName}`;
+        const lineDesc = opts.voucher.paymentRequest?.serialNumber ||
+            opts.voucher.description ||
+            opts.voucher.serialNumber;
+        const entry = await this.prisma.journalEntry.create({
+            data: {
+                serialNumber,
+                entryDate: opts.paymentDate,
+                description,
+                reference: opts.voucher.serialNumber,
+                sourceType: client_1.JournalSource.PAYMENT,
+                sourceId: opts.paymentId,
+                grantId: opts.voucher.grantId,
+                periodId: period.id,
+                currency: opts.voucher.currency || 'USD',
+                totalDebit: new client_1.Prisma.Decimal(amount),
+                totalCredit: new client_1.Prisma.Decimal(amount),
+                status: client_1.JournalStatus.POSTED,
+                isPosted: true,
+                postedAt: new Date(),
+                postedById: opts.user.id,
+                createdById: opts.user.id,
+                lines: {
+                    create: [
+                        {
+                            accountId: apAccount.id,
+                            description: `Clear AP — ${lineDesc}`,
+                            debitAmount: new client_1.Prisma.Decimal(amount),
+                            creditAmount: new client_1.Prisma.Decimal(0),
+                            currency: opts.voucher.currency || 'USD',
+                            exchangeRate: new client_1.Prisma.Decimal(exchangeRate),
+                            baseDebit: new client_1.Prisma.Decimal(amount * exchangeRate),
+                            baseCredit: new client_1.Prisma.Decimal(0),
+                            grantId: opts.voucher.grantId,
+                            lineNumber: 1,
+                        },
+                        {
+                            accountId: creditAccountId,
+                            description: `Payment — ${opts.paymentMethod.replace(/_/g, ' ')}`,
+                            debitAmount: new client_1.Prisma.Decimal(0),
+                            creditAmount: new client_1.Prisma.Decimal(amount),
+                            currency: opts.voucher.currency || 'USD',
+                            exchangeRate: new client_1.Prisma.Decimal(exchangeRate),
+                            baseDebit: new client_1.Prisma.Decimal(0),
+                            baseCredit: new client_1.Prisma.Decimal(amount * exchangeRate),
+                            grantId: opts.voucher.grantId,
+                            lineNumber: 2,
+                        },
+                    ],
+                },
+            },
+            include: { lines: true },
+        });
+        await this.prisma.payment.update({
+            where: { id: opts.paymentId },
+            data: { journalEntryId: entry.id },
+        });
+        await this.auditSvc.log({
+            userId: opts.user.id,
+            action: 'CREATE',
+            module: 'JOURNAL_ENTRIES',
+            resource: 'JournalEntry',
+            resourceId: entry.id,
+            newValues: {
+                serialNumber: entry.serialNumber,
+                sourceType: client_1.JournalSource.PAYMENT,
+                sourceId: opts.paymentId,
+                status: client_1.JournalStatus.POSTED,
+                totalDebit: amount,
+                totalCredit: amount,
+            },
+        });
+        return entry;
     }
     async findAllCheques(query) {
         const { page, limit } = (0, pagination_dto_1.parsePagination)(query);
-        const { status } = query;
-        const where = { ...(status && { status }) };
+        const { status, search } = query;
+        const where = {
+            ...(status && { status: status }),
+            ...(search && {
+                OR: [
+                    { chequeNumber: { contains: search, mode: 'insensitive' } },
+                    { serialNumber: { contains: search, mode: 'insensitive' } },
+                    { payeeName: { contains: search, mode: 'insensitive' } },
+                ],
+            }),
+        };
         const [data, total] = await Promise.all([
             this.prisma.cheque.findMany({
                 where,
-                include: { bankAccount: { select: { id: true, accountName: true, bankName: true } } },
+                include: {
+                    bankAccount: {
+                        select: { id: true, accountName: true, bankName: true, accountNumber: true },
+                    },
+                    payment: {
+                        select: {
+                            id: true,
+                            paymentDate: true,
+                            paymentVoucher: {
+                                select: { id: true, serialNumber: true, status: true },
+                            },
+                        },
+                    },
+                },
                 skip: (page - 1) * limit,
                 take: limit,
                 orderBy: { createdAt: 'desc' },

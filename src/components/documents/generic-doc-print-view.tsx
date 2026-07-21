@@ -1,7 +1,10 @@
 "use client";
 
 import { PrintDocumentShell } from "@/components/documents/print-document-shell";
-import { OfficialSignOffBlock } from "@/components/documents/official-sign-off-block";
+import {
+  OfficialSignOffBlock,
+  type OfficialSignOffTitles,
+} from "@/components/documents/official-sign-off-block";
 import {
   buildOfficialSignOff,
   type OfficialSignOffSlots,
@@ -32,6 +35,7 @@ interface GenericDocPrintViewProps {
   showTotalInWords?: boolean;
   showSignOff?: boolean;
   signOff?: OfficialSignOffSlots;
+  signOffTitles?: OfficialSignOffTitles;
   requestedByUser?: WorkflowActorLike | null;
   requestedAt?: string | Date | null;
   steps?: WorkflowStepLike[] | null;
@@ -50,6 +54,7 @@ export function GenericDocPrintView({
   showTotalInWords = true,
   showSignOff = true,
   signOff: signOffProp,
+  signOffTitles,
   requestedByUser,
   requestedAt,
   steps,
@@ -136,7 +141,7 @@ export function GenericDocPrintView({
 
       {showSignOff && (
         <div className="print-page-break-before">
-          <OfficialSignOffBlock slots={signOff} />
+          <OfficialSignOffBlock slots={signOff} titles={signOffTitles} />
         </div>
       )}
     </PrintDocumentShell>
